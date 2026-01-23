@@ -1,384 +1,564 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Eye, EyeOff, ArrowLeft, UserCircle, Wrench, Users, Shield, AlertCircle } from "lucide-react";
-import { registerSchema, RegisterFormData } from "@/lib/validations";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MapPicker } from "@/components/ui/MapPicker";
+import { X } from "lucide-react";
+import { FileText } from "lucide-react";
 
-type Role = "requester" | "worker" | "broker" | "admin";
-
-const roles = [
-  {
-    id: "requester" as Role,
-    icon: UserCircle,
-    title: "Service Requester",
-    description: "I need to find workers for my tasks",
-    color: "bg-blue-500"
-  },
-  {
-    id: "worker" as Role,
-    icon: Wrench,
-    title: "Service Provider",
-    description: "I want to offer my services",
-    color: "bg-green-500"
-  },
-  {
-    id: "broker" as Role,
-    icon: Users,
-    title: "Broker / Manager",
-    description: "I manage workers and help them find jobs",
-    color: "bg-purple-500"
-  },
-  {
-    id: "admin" as Role,
-    icon: Shield,
-    title: "Administrator",
-    description: "Platform administration and verification",
-    color: "bg-amber-500"
-  }
-];
+interface Location {
+  lat: number;
+  lng: number;
+  address?: string;
+}
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register: registerUser, isLoading } = useAuth();
+  const { register } = useAuth();
   const { toast } = useToast();
-  const [step, setStep] = useState<"role" | "form">("role");
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number; address?: string } | undefined>(undefined);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    watch,
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      fullName: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-    },
+  const [isLoading, setIsLoading] = useState(false);
+  const [showOtherSkill, setShowOtherSkill] = useState(false);
+  const [otherSkill, setOtherSkill] = useState("");
+  const [nicPhoto, setNicPhoto] = useState<File | null>(null);
+  const [nicPhotoPreview, setNicPhotoPreview] = useState<string | null>(null);
+  const [workingPhotos, setWorkingPhotos] = useState<File[]>([]);
+  const [workingPhotosPreview, setWorkingPhotosPreview] = useState<string[]>([]);
+  const [gpLetters, setGpLetters] = useState<File[]>([]);
+  const [gpLettersPreview, setGpLettersPreview] = useState<string[]>([]);
+
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "requester",
+    nic: "",
+    phone: "",
+    skills: [] as string[],
+    address: "",
+    location: null as Location | null,
   });
 
-  const password = watch("password");
-
-  const handleRoleSelect = (role: Role) => {
-    setSelectedRole(role);
-    setStep("form");
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const onSubmit = async (data: RegisterFormData) => {
-    if (!selectedRole) {
+  const handleRoleChange = (value: string) => {
+    setFormData({ ...formData, role: value });
+  };
+
+  const handleSkillChange = (value: string) => {
+    if (value === "Other") {
+      setShowOtherSkill(true);
+      setFormData({ ...formData, skills: [] });
+    } else {
+      setShowOtherSkill(false);
+      setFormData({ ...formData, skills: [value] });
+    }
+  };
+
+  const handleLocationSelect = (loc: Location) => {
+    setFormData((prev) => ({
+      ...prev,
+      location: loc,
+      address: loc.address || `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`,
+    }));
+  };
+
+  const handleNicPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setNicPhoto(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNicPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleWorkingPhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      // Validate all files
+      for (const file of fileArray) {
+        if (!file.type.startsWith('image/')) {
+          toast({
+            title: "Invalid file type",
+            description: "Please upload only image files for working photos.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          toast({
+            title: "File too large",
+            description: "Please upload images smaller than 10MB.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      setWorkingPhotos([...workingPhotos, ...fileArray]);
+      // Create previews
+      const previews: string[] = [];
+      fileArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          previews.push(reader.result as string);
+          if (previews.length === fileArray.length) {
+            setWorkingPhotosPreview([...workingPhotosPreview, ...previews]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleGPLettersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const fileArray = Array.from(files);
+      // Validate all files
+      for (const file of fileArray) {
+        if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+          toast({
+            title: "Invalid file type",
+            description: "Please upload image or PDF files for GP letters.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          toast({
+            title: "File too large",
+            description: "Please upload files smaller than 10MB.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      setGpLetters([...gpLetters, ...fileArray]);
+      // Create previews for images only
+      const previews: string[] = [];
+      fileArray.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            previews.push(reader.result as string);
+            if (previews.length === fileArray.filter(f => f.type.startsWith('image/')).length) {
+              setGpLettersPreview([...gpLettersPreview, ...previews]);
+            }
+          };
+          reader.readAsDataURL(file);
+        } else {
+          previews.push('pdf');
+        }
+      });
+    }
+  };
+
+  const removeWorkingPhoto = (index: number) => {
+    setWorkingPhotos(workingPhotos.filter((_, i) => i !== index));
+    setWorkingPhotosPreview(workingPhotosPreview.filter((_, i) => i !== index));
+  };
+
+  const removeGPLetter = (index: number) => {
+    setGpLetters(gpLetters.filter((_, i) => i !== index));
+    setGpLettersPreview(gpLettersPreview.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    if (formData.password !== formData.confirmPassword) {
       toast({
-        title: "Error",
-        description: "Please select a role first.",
+        title: "Passwords do not match",
+        description: "Please ensure both passwords match.",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
 
-    // For worker and broker roles, location is required
-    if ((selectedRole === "worker" || selectedRole === "broker") && !location) {
+    if (!formData.location) {
       toast({
         title: "Location Required",
         description: "Please select your location on the map.",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
 
-    const success = await registerUser({
-      email: data.email,
-      password: data.password,
-      fullName: data.fullName,
-      phone: data.phone,
-      nic: data.nic,
-      location: location,
-      role: selectedRole,
-    });
-
-    if (success) {
+    if (!nicPhoto) {
       toast({
-        title: "Registration successful!",
-        description: "Your account has been created. Please wait for admin approval before logging in.",
-      });
-
-      // Navigate to login page
-      navigate("/login", { replace: true });
-    } else {
-      toast({
-        title: "Registration failed",
-        description: "Please try again later.",
+        title: "NIC Photo Required",
+        description: "Please upload a photo of your NIC.",
         variant: "destructive",
       });
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.role === "worker" && showOtherSkill && !otherSkill) {
+      toast({
+        title: "Skill required",
+        description: "Please specify your skill.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const finalSkills = showOtherSkill ? [otherSkill] : formData.skills;
+
+    try {
+      await register({
+        ...formData,
+        skills: finalSkills,
+        nicPhoto: nicPhoto,
+        workingPhotos: formData.role === "worker" ? workingPhotos : [],
+        gpLetters: formData.role === "worker" ? gpLetters : [],
+      });
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created. Please wait for admin approval.",
+      });
+      navigate("/login");
+    } catch (error: any) {
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Something went wrong.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Password strength indicator
-  const getPasswordStrength = (pwd: string): { label: string; color: string; width: string } => {
-    if (!pwd) return { label: "", color: "bg-muted", width: "0%" };
-
-    let strength = 0;
-    if (pwd.length >= 12) strength++;
-    if (/[A-Z]/.test(pwd)) strength++;
-    if (/[a-z]/.test(pwd)) strength++;
-    if (/[0-9]/.test(pwd)) strength++;
-    if (/[^A-Za-z0-9]/.test(pwd)) strength++;
-
-    const levels = [
-      { label: "Very weak", color: "bg-red-500", width: "20%" },
-      { label: "Weak", color: "bg-orange-500", width: "40%" },
-      { label: "Fair", color: "bg-yellow-500", width: "60%" },
-      { label: "Good", color: "bg-lime-500", width: "80%" },
-      { label: "Strong", color: "bg-green-500", width: "100%" },
-    ];
-
-    return levels[Math.min(strength - 1, 4)] || levels[0];
-  };
-
-  const passwordStrength = getPasswordStrength(password || "");
-
   return (
-    <div className="min-h-screen gradient-hero flex flex-col">
-      {/* Header */}
-      <header className="p-4">
-        <Link to="/" className="inline-flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-            <MapPin className="w-5 h-5 text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 py-8">
+      <Card className="w-full max-w-2xl shadow-lg border-border/40 bg-card/50 backdrop-blur-sm">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold font-display text-center">
+            Create an Account
+          </CardTitle>
+          <CardDescription className="text-center">
+            Enter your information to get started
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Personal Info */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  name="fullName"
+                  placeholder="John Doe"
+                  autoComplete="name"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  autoComplete="email"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  placeholder="+1234567890"
+                  autoComplete="tel"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nic">NIC</Label>
+                <Input
+                  id="nic"
+                  name="nic"
+                  placeholder="National Identity Card Number"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* NIC Photo Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="nicPhoto">NIC Photo</Label>
+              <Input
+                id="nicPhoto"
+                name="nicPhoto"
+                type="file"
+                accept="image/*"
+                onChange={handleNicPhotoChange}
+                required
+                className="cursor-pointer"
+              />
+              {nicPhotoPreview && (
+                <div className="mt-2">
+                  <p className="text-sm text-muted-foreground mb-2">Preview:</p>
+                  <img
+                    src={nicPhotoPreview}
+                    alt="NIC Preview"
+                    className="max-w-xs max-h-48 rounded-md border object-contain"
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Please upload a clear photo of your National Identity Card (Max 5MB)
+              </p>
+            </div>
+
+            {/* Role */}
+            <div className="space-y-2">
+              <Label htmlFor="role">I want to be a...</Label>
+              <Select onValueChange={handleRoleChange} defaultValue="requester">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="requester">Requester (Customer)</SelectItem>
+                  <SelectItem value="worker">Worker (Service Provider)</SelectItem>
+                  <SelectItem value="broker">Broker</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Worker Skills */}
+            {formData.role === "worker" && (
+              <div className="space-y-2 animate-fade-in">
+                <Label htmlFor="skills">Select your Skill/Job Type</Label>
+                <Select onValueChange={handleSkillChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your main skill" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Plumber">Plumber</SelectItem>
+                    <SelectItem value="Electrician">Electrician</SelectItem>
+                    <SelectItem value="Cleaner">Cleaner</SelectItem>
+                    <SelectItem value="Chef">Chef</SelectItem>
+                    <SelectItem value="Carpenter">Carpenter</SelectItem>
+                    <SelectItem value="Mason">Mason</SelectItem>
+                    <SelectItem value="Gardener">Gardener</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {showOtherSkill && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Please specify your skill"
+                    value={otherSkill}
+                    onChange={(e) => setOtherSkill(e.target.value)}
+                    required
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Worker Documents */}
+            {formData.role === "worker" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="workingPhotos">Working Photos</Label>
+                  <Input
+                    id="workingPhotos"
+                    name="workingPhotos"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleWorkingPhotosChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                  {workingPhotosPreview.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {workingPhotosPreview.map((preview, idx) => (
+                        <div key={idx} className="relative border rounded-md p-2">
+                          <img
+                            src={preview}
+                            alt={`Working Photo ${idx + 1}`}
+                            className="w-full h-24 object-cover rounded-md"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            className="absolute top-1 right-1 h-6 w-6 p-0"
+                            onClick={() => removeWorkingPhoto(idx)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Upload photos of your completed work (Max 10MB each, at least 1 required)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gpLetters">GP Letters / Medical Certificates</Label>
+                  <Input
+                    id="gpLetters"
+                    name="gpLetters"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    multiple
+                    onChange={handleGPLettersChange}
+                    required
+                    className="cursor-pointer"
+                  />
+                  {gpLettersPreview.length > 0 && (
+                    <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {gpLettersPreview.map((preview, idx) => (
+                        <div key={idx} className="relative border rounded-md p-2">
+                          {preview === 'pdf' ? (
+                            <div className="w-full h-24 flex items-center justify-center bg-muted rounded-md">
+                              <FileText className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          ) : (
+                            <img
+                              src={preview}
+                              alt={`GP Letter ${idx + 1}`}
+                              className="w-full h-24 object-cover rounded-md"
+                            />
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            className="absolute top-1 right-1 h-6 w-6 p-0"
+                            onClick={() => removeGPLetter(idx)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Upload GP letters or medical certificates (Images or PDFs, Max 10MB each, at least 1 required)
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Location */}
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                name="address"
+                placeholder="Pin your location on the map below"
+                value={formData.address}
+                onChange={handleChange}
+                readOnly
+              />
+              <div className="mt-3">
+                <MapPicker
+                  onLocationSelect={handleLocationSelect}
+                  defaultLocation={formData.location || undefined}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+
+            <Button className="w-full" type="submit" disabled={isLoading}>
+              {isLoading ? "Creating Account..." : "Sign Up"}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <div className="text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary hover:underline font-medium">
+              Sign in
+            </Link>
           </div>
-          <span className="font-display font-bold text-lg text-primary">SSP</span>
-        </Link>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg animate-fade-up">
-          {step === "role" ? (
-            /* Role Selection */
-            <div className="space-y-6">
-              <div className="text-center">
-                <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-                  Create Account
-                </h1>
-                <p className="text-muted-foreground">
-                  Choose how you want to use Smart Service Platform
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {roles.map((role) => (
-                  <button
-                    key={role.id}
-                    onClick={() => handleRoleSelect(role.id)}
-                    className="group p-6 rounded-2xl bg-card border-2 border-border hover:border-primary hover:shadow-lg transition-all text-left"
-                  >
-                    <div className={`w-12 h-12 rounded-xl ${role.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                      <role.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-display font-semibold text-foreground mb-1">
-                      {role.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {role.description}
-                    </p>
-                  </button>
-                ))}
-              </div>
-
-              <p className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link to="/login" className="text-primary font-semibold hover:underline">
-                  Sign In
-                </Link>
-              </p>
-            </div>
-          ) : (
-            /* Registration Form */
-            <div className="bg-card rounded-2xl border border-border p-8 shadow-xl">
-              <button
-                onClick={() => setStep("role")}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to role selection
-              </button>
-
-              <div className="mb-6">
-                <h1 className="font-display text-2xl font-bold text-foreground mb-1">
-                  Register as {roles.find(r => r.id === selectedRole)?.title}
-                </h1>
-                <p className="text-muted-foreground text-sm">
-                  Fill in your details to get started
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Enter your full name"
-                    {...register("fullName")}
-                    className={`h-12 ${errors.fullName ? "border-destructive" : ""}`}
-                    aria-invalid={errors.fullName ? "true" : "false"}
-                  />
-                  {errors.fullName && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.fullName.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your.email@example.com"
-                    {...register("email")}
-                    className={`h-12 ${errors.email ? "border-destructive" : ""}`}
-                    aria-invalid={errors.email ? "true" : "false"}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.email.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="nic">National Identity Card (NIC)</Label>
-                  <Input
-                    id="nic"
-                    type="text"
-                    placeholder="Enter your NIC number"
-                    {...register("nic")}
-                    className={`h-12 ${errors.nic ? "border-destructive" : ""}`}
-                    aria-invalid={errors.nic ? "true" : "false"}
-                  />
-                  {errors.nic && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.nic.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+94 XX XXX XXXX"
-                    {...register("phone")}
-                    className={`h-12 ${errors.phone ? "border-destructive" : ""}`}
-                    aria-invalid={errors.phone ? "true" : "false"}
-                  />
-                  {errors.phone && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.phone.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Location</Label>
-                  <MapPicker onLocationSelect={setLocation} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
-                      {...register("password")}
-                      className={`h-12 pr-12 ${errors.password ? "border-destructive" : ""}`}
-                      aria-invalid={errors.password ? "true" : "false"}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  {password && (
-                    <div className="space-y-1">
-                      <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${passwordStrength.color} transition-all duration-300`}
-                          style={{ width: passwordStrength.width }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Password strength: {passwordStrength.label}
-                      </p>
-                    </div>
-                  )}
-                  {errors.password && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.password.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Re-enter password"
-                    {...register("confirmPassword")}
-                    className={`h-12 ${errors.confirmPassword ? "border-destructive" : ""}`}
-                    aria-invalid={errors.confirmPassword ? "true" : "false"}
-                  />
-                  {errors.confirmPassword && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {errors.confirmPassword.message}
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  type="submit"
-                  variant="hero"
-                  size="lg"
-                  className="w-full"
-                  disabled={isSubmitting || isLoading}
-                >
-                  {isSubmitting || isLoading ? "Creating Account..." : "Create Account"}
-                </Button>
-              </form>
-
-              <p className="text-center text-sm text-muted-foreground mt-6">
-                Already have an account?{" "}
-                <Link to="/login" className="text-primary font-semibold hover:underline">
-                  Sign In
-                </Link>
-              </p>
-            </div>
-          )}
-        </div>
-      </main>
+        </CardFooter>
+      </Card>
     </div>
   );
 };

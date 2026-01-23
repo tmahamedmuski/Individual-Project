@@ -22,6 +22,14 @@ const serviceRequestSchema = mongoose.Schema(
             type: String,
             required: [true, 'Please add a time'],
         },
+        phoneNumber: {
+            type: String,
+            required: [true, 'Please add a phone number'],
+        },
+        budget: {
+            type: Number,
+            required: [true, 'Please add a budget'],
+        },
         status: {
             type: String,
             enum: ['pending', 'in_progress', 'completed'],

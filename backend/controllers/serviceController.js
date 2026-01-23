@@ -5,9 +5,9 @@ const User = require('../models/User');
 // @route   POST /api/services
 // @access  Private
 const createRequest = async (req, res) => {
-    const { serviceType, description, location, date, time } = req.body;
+    const { serviceType, description, location, date, time, phoneNumber, budget } = req.body;
 
-    if (!serviceType || !description || !location || !date || !time) {
+    if (!serviceType || !description || !location || !date || !time || !phoneNumber || !budget) {
         return res.status(400).json({ message: 'Please add all fields' });
     }
 
@@ -18,6 +18,8 @@ const createRequest = async (req, res) => {
             location,
             date,
             time,
+            phoneNumber,
+            budget,
             requester: req.user.id,
         });
 
@@ -54,8 +56,96 @@ const getWorkers = async (req, res) => {
     }
 };
 
+// @desc    Get available requests for workers
+// @route   GET /api/services/available
+// @access  Private
+const getAvailableRequests = async (req, res) => {
+    try {
+        const requests = await ServiceRequest.find({ status: 'pending' })
+            .populate('requester', 'fullName email phone')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(requests);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get single service request
+// @route   GET /api/services/:id
+// @access  Private
+const getRequest = async (req, res) => {
+    try {
+        const request = await ServiceRequest.findById(req.params.id);
+
+        if (!request) {
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        res.status(200).json(request);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update service request
+// @route   PUT /api/services/:id
+// @access  Private
+const updateRequest = async (req, res) => {
+    try {
+        const request = await ServiceRequest.findById(req.params.id);
+
+        if (!request) {
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        // Check user
+        if (request.requester.toString() !== req.user.id) {
+            return res.status(401).json({ message: 'User not authorized' });
+        }
+
+        const updatedRequest = await ServiceRequest.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true }
+        );
+
+        res.status(200).json(updatedRequest);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Delete service request
+// @route   DELETE /api/services/:id
+// @access  Private
+const deleteRequest = async (req, res) => {
+    try {
+        const request = await ServiceRequest.findById(req.params.id);
+
+        if (!request) {
+            return res.status(404).json({ message: 'Request not found' });
+        }
+
+        // Check user
+        if (request.requester.toString() !== req.user.id) {
+            return res.status(401).json({ message: 'User not authorized' });
+        }
+
+        await request.deleteOne();
+
+        res.status(200).json({ id: req.params.id });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createRequest,
     getMyRequests,
     getWorkers,
+    getAvailableRequests,
+    getRequest,
+    updateRequest,
+    deleteRequest,
 };

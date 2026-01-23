@@ -25,6 +25,10 @@ const userSchema = mongoose.Schema(
             required: [true, 'Please add a NIC number'],
             unique: true,
         },
+        nicPhoto: {
+            type: String,
+            default: null,
+        },
         location: {
             type: {
                 type: String,
@@ -53,6 +57,18 @@ const userSchema = mongoose.Schema(
             type: String,
             enum: ['pending', 'approved', 'rejected'],
             default: 'pending',
+        },
+        rejectionTimestamp: {
+            type: Date,
+            default: null,
+        },
+        workingPhotos: {
+            type: [String],
+            default: [],
+        },
+        gpLetters: {
+            type: [String],
+            default: [],
         },
     },
     {

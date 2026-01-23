@@ -4,78 +4,75 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import AdminDashboard from "./pages/AdminDashboard";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import CreateRequest from "./pages/CreateRequest";
+import EditRequest from "./pages/EditRequest";
+import MyRequests from "./pages/MyRequests";
 import RequesterDashboard from "./pages/RequesterDashboard";
 import WorkerDashboard from "./pages/WorkerDashboard";
 import BrokerDashboard from "./pages/BrokerDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+import { ThemeProvider } from "@/components/theme-provider";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  {/* Default dashboard redirect currently happening in ProtectedRoute or component logic could be improved here, 
-                      but for now let's keep Dashboard as a generic fallback or specific role one */}
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/requester"
-              element={
-                <ProtectedRoute requiredRole="requester">
-                  <RequesterDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/worker"
-              element={
-                <ProtectedRoute requiredRole="worker">
-                  <WorkerDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/broker"
-              element={
-                <ProtectedRoute requiredRole="broker">
-                  <BrokerDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute requiredRole="requester" />}>
+                <Route path="/requester/create-request" element={<CreateRequest />} />
+                <Route path="/requester/edit-request/:id" element={<EditRequest />} />
+                <Route path="/requester/requests" element={<MyRequests />} />
+                <Route path="/requester/*" element={<RequesterDashboard />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredRole="worker" />}>
+                <Route path="/worker/*" element={<WorkerDashboard />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredRole="broker" />}>
+                <Route path="/broker/*" element={<BrokerDashboard />} />
+              </Route>
+
+              <Route element={<ProtectedRoute requiredRole="admin" />}>
+                <Route path="/admin/*" element={<AdminDashboard />} />
+              </Route>
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
         </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

@@ -1,176 +1,151 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-
-// Note: This is a placeholder auth context. 
-// Real authentication requires Lovable Cloud backend with proper JWT tokens.
-// DO NOT use this in production without implementing server-side authentication.
-
-import api from "@/lib/axios";
-
-type Role = "requester" | "worker" | "broker" | "admin" | null;
-
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import api from '@/lib/axios';
 
 interface User {
-  id: string;
-  email: string;
-  fullName: string;
-  role: Role;
+    _id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    role: string;
+    accountStatus: string;
+    isApproved: boolean;
 }
 
 interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string; role?: string }>;
-  register: (data: RegisterData) => Promise<boolean>;
-  logout: () => void;
-  updatePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  fullName: string;
-  nic: string;
-  phone: string;
-  location?: {
-    lat: number;
-    lng: number;
-    address?: string;
-  };
-  role: Role;
+    user: User | null;
+    loading: boolean;
+    login: (data: any) => Promise<{ success: boolean; message?: string; role?: string }>;
+    register: (data: any) => Promise<any>;
+    logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for existing session on mount
-    const checkAuth = async () => {
-      const token = localStorage.getItem("auth_token");
-      if (token) {
-        try {
-          const { data } = await api.get("/auth/me");
-          // Backend returns _id, map to id if needed, or just use data if interface matches
-          // Our User interface expects id, backend has _id. 
-          setUser({ ...data, id: data._id });
-        } catch (error) {
-          console.error("Session verification failed:", error);
-          localStorage.removeItem("auth_token");
-          setUser(null);
+    useEffect(() => {
+        checkUserLoggedIn();
+    }, []);
+
+    const checkUserLoggedIn = async () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const { data } = await api.get('/auth/me'); // Ensure backend has this endpoint or similar
+                setUser(data);
+            } catch (error) {
+                console.error("Session check failed:", error);
+                localStorage.removeItem('token');
+            }
         }
-      }
-      setIsLoading(false);
+        setLoading(false);
     };
 
-    checkAuth();
-  }, []);
+    const login = async (userData: any) => {
+        try {
+            const { data } = await api.post('/auth/login', userData);
+            localStorage.setItem('token', data.token);
+            setUser(data.user || null); // Ideally backend returns user info on login
+            // Fetch full user details if not returned in login
+            if (!data.user) {
+                const me = await api.get('/auth/me');
+                setUser(me.data);
+                return { success: true, role: me.data.role };
+            }
+            return { success: true, role: data.user.role };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Login failed',
+            };
+        }
+    };
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
-    setIsLoading(true);
-    try {
-      const { data } = await api.post("/auth/login", { email, password });
+    const register = async (userData: any) => {
+        try {
+            // Check if there's a file to upload
+            if (userData.nicPhoto instanceof File || (userData.workingPhotos && userData.workingPhotos.length > 0) || (userData.gpLetters && userData.gpLetters.length > 0)) {
+                // Create FormData for file upload
+                const formData = new FormData();
+                
+                // Append all form fields
+                formData.append('fullName', userData.fullName);
+                formData.append('email', userData.email);
+                formData.append('password', userData.password);
+                formData.append('role', userData.role || 'requester');
+                formData.append('phone', userData.phone);
+                formData.append('nic', userData.nic);
+                formData.append('address', userData.address || '');
+                
+                // Append location as JSON string
+                if (userData.location) {
+                    formData.append('location', JSON.stringify({
+                        type: 'Point',
+                        coordinates: [userData.location.lng, userData.location.lat],
+                        address: userData.location.address
+                    }));
+                }
+                
+                // Append skills as JSON string
+                if (userData.skills && Array.isArray(userData.skills)) {
+                    formData.append('skills', JSON.stringify(userData.skills));
+                }
+                
+                // Append NIC photo
+                if (userData.nicPhoto instanceof File) {
+                    formData.append('nicPhoto', userData.nicPhoto);
+                }
+                
+                // Append working photos (for workers)
+                if (userData.workingPhotos && Array.isArray(userData.workingPhotos)) {
+                    userData.workingPhotos.forEach((file: File) => {
+                        formData.append('workingPhotos', file);
+                    });
+                }
+                
+                // Append GP letters (for workers)
+                if (userData.gpLetters && Array.isArray(userData.gpLetters)) {
+                    userData.gpLetters.forEach((file: File) => {
+                        formData.append('gpLetters', file);
+                    });
+                }
+                
+                // Send with multipart/form-data header
+                const response = await api.post('/auth/register', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+                return response.data;
+            } else {
+                // Fallback to JSON if no file
+                const response = await api.post('/auth/register', userData);
+                return response.data;
+            }
+        } catch (error: any) {
+            throw new Error(error.response?.data?.message || 'Registration failed');
+        }
+    };
 
-      const userWithId = { ...data, id: data._id };
-      setUser(userWithId);
-      localStorage.setItem("auth_token", data.token);
+    const logout = () => {
+        localStorage.removeItem('token');
+        setUser(null);
+        window.location.href = '/login';
+    };
 
-      return { success: true };
-    } catch (error: any) {
-      console.error("Login error:", error);
-      const message = error.response?.data?.message || "Login failed";
-      return { success: false, message };
-    } finally {
-      setIsLoading(false);
+    return (
+        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
     }
-  };
-
-  const register = async (data: RegisterData): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      // Backend expects: fullName, email, password, role
-      const payload = {
-        fullName: data.fullName,
-        email: data.email,
-        password: data.password,
-        role: data.role,
-        nic: data.nic,
-        phone: data.phone,
-        location: data.location,
-      };
-
-      const { data: responseData } = await api.post("/auth/register", payload);
-
-      // Do not set user or token here, as approval is needed
-
-      return true;
-    } catch (error) {
-      console.error("Registration error:", error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("auth_token");
-    // Also remove old key if it exists
-    localStorage.removeItem("auth_user");
-  };
-
-  const updatePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    // WARNING: This is a placeholder implementation
-    // Real implementation must validate on backend and update password securely
-
-    setIsLoading(true);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.warn(
-        "⚠️ Auth Warning: Using placeholder password update. " +
-        "Enable Lovable Cloud for real password management."
-      );
-
-      // In production, this would:
-      // 1. Send current + new password to backend
-      // 2. Validate current password
-      // 3. Hash and store new password
-      // 4. Invalidate other sessions if needed
-
-      return true;
-    } catch (error) {
-      console.error("Password update error:", error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        register,
-        logout,
-        updatePassword,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-}
+    return context;
+};

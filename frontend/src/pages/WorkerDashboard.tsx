@@ -1,240 +1,290 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { StatCard } from "@/components/ui/stat-card";
+import { JobCard } from "@/components/dashboard/JobCard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    MapPin,
-    Home,
-    Briefcase,
-    User,
-    Settings,
-    LogOut,
-    Bell,
-    Clock,
-    CheckCircle,
-    Calendar,
-    MapPinned
+  Briefcase,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Home,
+  MessageSquare,
+  Settings,
+  Star,
+  TrendingUp,
+  User,
 } from "lucide-react";
-import PasswordChangeForm from "@/components/settings/PasswordChangeForm";
-import api from "@/lib/axios";
+import { workerNavItems } from "@/config/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import api from "@/lib/axios";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
-interface ServiceRequest {
-    _id: string;
-    serviceType: string;
-    description: string;
-    location: string;
-    date: string;
-    time: string;
-    status: "pending" | "in_progress" | "completed";
-    requester: {
-        fullName: string;
-    }
-}
 
-const WorkerDashboard = () => {
-    const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState("overview");
-    const [assignedJobs, setAssignedJobs] = useState<ServiceRequest[]>([]);
-    const [availableJobs, setAvailableJobs] = useState<ServiceRequest[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchJobs = async () => {
-            try {
-                // Fetch jobs assigned to this worker
-                const assignedRes = await api.get("/services/my-jobs");
-                setAssignedJobs(assignedRes.data);
+const pendingJobs = [
+  {
+    id: 1,
+    title: "Plumbing Repair",
+    description: "Fix leaking pipe in kitchen sink",
+    location: "Colombo 07",
+    date: "Jan 26, 2026",
+    time: "10:00 AM",
+    duration: "2 hours",
+    budget: 5000,
+    status: "pending" as const,
+    requester: { name: "ABC Company", rating: 4.9 },
+  },
+  {
+    id: 2,
+    title: "Bathroom Installation",
+    description: "Install new shower and bathroom fittings",
+    location: "Colombo 03",
+    date: "Jan 27, 2026",
+    time: "08:00 AM",
+    duration: "Full day",
+    budget: 15000,
+    status: "pending" as const,
+    requester: { name: "University of Moratuwa", rating: 5.0 },
+  },
+];
 
-                // Fetch available jobs (pending requests in the area or general pool)
-                // For now, let's assume we have an endpoint for this or reuse something
-                const availableRes = await api.get("/services/available");
-                setAvailableJobs(availableRes.data);
+const activeJobs = [
+  {
+    id: 3,
+    title: "Water Heater Repair",
+    description: "Service and repair water heater",
+    location: "Colombo 05",
+    date: "Jan 24, 2026",
+    time: "02:00 PM",
+    duration: "3 hours",
+    budget: 3500,
+    status: "in-progress" as const,
+    requester: { name: "Sarah Jayasinghe", rating: 4.8 },
+  },
+];
 
-            } catch (error) {
-                console.error("Error fetching jobs:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchJobs();
-    }, []);
+const recentReviews = [
+  { requester: "ABC Company", rating: 5, comment: "Excellent work! Very professional and on time." },
+  { requester: "Sarah J.", rating: 4, comment: "Good job, would recommend." },
+  { requester: "University", rating: 5, comment: "Quick and efficient service." },
+];
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case "pending":
-                return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">Pending</span>;
-            case "in_progress":
-                return <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">In Progress</span>;
-            case "completed":
-                return <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">Completed</span>;
-            default:
-                return null;
-        }
+export default function WorkerDashboard() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [pendingJobs, setPendingJobs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const { data } = await api.get('/services/available');
+        // Transform backend data to match JobCard interface if needed
+        const formattedJobs = data.map((job: any) => ({
+          id: job._id,
+          title: job.serviceType,
+          description: job.description,
+          location: job.location,
+          date: job.date,
+          time: job.time,
+          duration: "N/A", // Backend doesn't store duration yet
+          budget: job.budget,
+          status: job.status,
+          requester: {
+            name: job.requester?.fullName || "Unknown",
+            rating: 0,
+            phone: job.phoneNumber
+          }, // Rating not in User model yet
+        }));
+        setPendingJobs(formattedJobs);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load available jobs.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
     };
 
-    return (
-        <div className="min-h-screen bg-background flex">
-            {/* Sidebar */}
-            <aside className="hidden md:flex w-64 flex-col border-r border-border bg-card">
-                <div className="p-4 border-b border-border">
-                    <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                            <MapPin className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="font-display font-bold text-lg leading-none text-primary">Smart Service</span>
-                            <span className="text-[10px] text-muted-foreground leading-none">Worker Portal</span>
-                        </div>
-                    </div>
-                </div>
+    fetchJobs();
+  }, [toast]);
 
-                <nav className="flex-1 p-4 space-y-2">
-                    <button onClick={() => setActiveTab("overview")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === "overview" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
-                        <Home className="w-5 h-5" />
-                        Overview
-                    </button>
-                    <button onClick={() => setActiveTab("my-jobs")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === "my-jobs" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
-                        <CheckCircle className="w-5 h-5" />
-                        My Jobs
-                    </button>
-                    <button onClick={() => setActiveTab("find-jobs")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === "find-jobs" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
-                        <Briefcase className="w-5 h-5" />
-                        Find Jobs
-                    </button>
-                    <button onClick={() => setActiveTab("settings")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === "settings" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
-                        <Settings className="w-5 h-5" />
-                        Settings
-                    </button>
-                </nav>
-
-                <div className="p-4 border-t border-border">
-                    <Button variant="ghost" className="w-full justify-start text-muted-foreground" asChild>
-                        <Link to="/">
-                            <LogOut className="w-5 h-5 mr-3" />
-                            Sign Out
-                        </Link>
-                    </Button>
-                </div>
-            </aside>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-                <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
-                    <div>
-                        <h1 className="font-display font-semibold text-lg text-foreground">Worker Dashboard</h1>
-                        <p className="text-sm text-muted-foreground">Welcome back, {user?.fullName}!</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-semibold">
-                            {user?.fullName?.charAt(0) || 'W'}
-                        </div>
-                    </div>
-                </header>
-
-                <main className="flex-1 p-6 overflow-auto">
-                    {activeTab === "overview" && (
-                        <div className="space-y-6 animate-fade-in">
-                            {/* Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="p-6 rounded-2xl bg-card border border-border">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                                            <Briefcase className="w-6 h-6 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-2xl font-display font-bold text-foreground">{assignedJobs.length}</p>
-                                            <p className="text-sm text-muted-foreground">Active Jobs</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6 rounded-2xl bg-card border border-border">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                                            <CheckCircle className="w-6 h-6 text-green-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-2xl font-display font-bold text-foreground">0</p>
-                                            <p className="text-sm text-muted-foreground">Completed This Week</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h2 className="font-display text-xl font-semibold text-foreground">Current Jobs</h2>
-                            <div className="space-y-3">
-                                {assignedJobs.map((job) => (
-                                    <div key={job._id} className="p-4 rounded-xl bg-card border border-border">
-                                        <div className="flex justify-between">
-                                            <div>
-                                                <h4 className="font-bold">{job.serviceType}</h4>
-                                                <p className="text-sm text-muted-foreground">{job.description}</p>
-                                                <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                                                    <span className="flex items-center gap-1"><MapPinned className="w-3 h-3" /> {job.location}</span>
-                                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {job.date} {job.time}</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                {getStatusBadge(job.status)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {assignedJobs.length === 0 && <p className="text-muted-foreground">No active jobs assigned.</p>}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === "my-jobs" && (
-                        <div className="space-y-4">
-                            <h2 className="font-display text-2xl font-bold text-foreground">My Jobs</h2>
-                            {assignedJobs.map((job) => (
-                                <div key={job._id} className="p-4 rounded-xl bg-card border border-border">
-                                    {/* Job Details Card */}
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h4 className="font-bold text-lg">{job.serviceType}</h4>
-                                            <p className="text-muted-foreground">{job.description}</p>
-                                            <p className="text-sm mt-1">Requester: {job.requester?.fullName}</p>
-                                        </div>
-                                        <Button size="sm">Update Status</Button>
-                                    </div>
-                                </div>
-                            ))}
-                            {assignedJobs.length === 0 && <p className="text-muted-foreground">No jobs found.</p>}
-                        </div>
-                    )}
-
-                    {activeTab === "find-jobs" && (
-                        <div className="space-y-4">
-                            <h2 className="font-display text-2xl font-bold text-foreground">Available Jobs</h2>
-                            {availableJobs.map((job) => (
-                                <div key={job._id} className="p-4 rounded-xl bg-card border border-border">
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <h4 className="font-bold">{job.serviceType}</h4>
-                                            <p className="text-sm text-muted-foreground">{job.description}</p>
-                                            <p className="text-xs text-muted-foreground mt-1"><MapPinned className="w-3 h-3 inline mr-1" />{job.location}</p>
-                                        </div>
-                                        <Button size="sm" variant="secondary">Accept Job</Button>
-                                    </div>
-                                </div>
-                            ))}
-                            {availableJobs.length === 0 && <p className="text-muted-foreground">No available jobs at the moment.</p>}
-                        </div>
-                    )}
-
-                    {activeTab === "settings" && (
-                        <div className="animate-fade-in">
-                            <h2 className="font-display text-2xl font-bold text-foreground mb-6">Settings</h2>
-                            <div className="bg-card border border-border rounded-2xl p-6">
-                                <PasswordChangeForm />
-                            </div>
-                        </div>
-                    )}
-                </main>
-            </div>
+  return (
+    <DashboardLayout
+      navItems={workerNavItems}
+      role="worker"
+      userName={user?.fullName || "Ajith Bandara"}
+      userEmail={user?.email || "ajith@gmail.com"}
+    >
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Welcome, {user?.fullName?.split(' ')[0] || 'Worker'}!</h1>
+            <p className="text-muted-foreground">
+              You have {pendingJobs.length} new job requests waiting
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge className="bg-success text-success-foreground">
+              Verified Worker
+            </Badge>
+            <Badge variant="outline" className="bg-worker/10 text-worker border-worker/20">
+              Available
+            </Badge>
+          </div>
         </div>
-    );
-};
 
-export default WorkerDashboard;
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Pending Requests"
+            value={pendingJobs.length}
+            icon={Clock}
+            variant="worker"
+          />
+          <StatCard
+            title="Jobs Completed"
+            value={127}
+            icon={CheckCircle}
+            variant="worker"
+            trend={{ value: 8, isPositive: true }}
+          />
+          <StatCard
+            title="Your Rating"
+            value="4.8"
+            subtitle="127 reviews"
+            icon={Star}
+            variant="worker"
+          />
+          <StatCard
+            title="This Month"
+            value="Rs. 45,000"
+            icon={DollarSign}
+            variant="worker"
+            trend={{ value: 15, isPositive: true }}
+          />
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            <Tabs defaultValue="pending" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="pending">
+                  Pending
+                  <Badge variant="secondary" className="ml-2">
+                    {pendingJobs.length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="active">Active</TabsTrigger>
+                <TabsTrigger value="completed">Completed</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="pending" className="space-y-4">
+                {pendingJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    title={job.title}
+                    description={job.description}
+                    location={job.location}
+                    date={job.date}
+                    time={job.time}
+                    duration={job.duration}
+                    status={job.status}
+                    requester={job.requester}
+                    variant="worker"
+                    onAccept={() => { }}
+                    onDecline={() => { }}
+                    onView={() => { }}
+                  />
+                ))}
+              </TabsContent>
+
+              <TabsContent value="active" className="space-y-4">
+                {activeJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    title={job.title}
+                    description={job.description}
+                    location={job.location}
+                    date={job.date}
+                    time={job.time}
+                    duration={job.duration}
+
+                    budget={job.budget}
+                    status={job.status}
+                    requester={job.requester}
+                    variant="worker"
+                    onView={() => { }}
+                  />
+                ))}
+              </TabsContent>
+
+              <TabsContent value="completed">
+                <div className="text-center py-12 text-muted-foreground">
+                  View all 127 completed jobs
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Profile Completion */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Profile Completion</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span>85% Complete</span>
+                  <TrendingUp className="h-4 w-4 text-success" />
+                </div>
+                <Progress value={85} className="h-2" />
+                <p className="text-xs text-muted-foreground">
+                  Add more skills to attract more clients
+                </p>
+                <Button variant="outline" size="sm" className="w-full">
+                  Complete Profile
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Recent Reviews */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Star className="h-4 w-4 text-warning" />
+                  Recent Reviews
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {recentReviews.map((review, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{review.requester}</span>
+                      <div className="flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-warning text-warning" />
+                        <span className="text-sm">{review.rating}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{review.comment}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
