@@ -34,6 +34,8 @@ interface JobCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onComplete?: () => void;
+  onBid?: () => void;
+  onViewBids?: () => void;
   variant?: "requester" | "worker" | "broker";
   className?: string;
 }
@@ -56,6 +58,8 @@ export function JobCard({
   onEdit,
   onDelete,
   onComplete,
+  onBid,
+  onViewBids,
   variant = "requester",
   className,
 }: JobCardProps) {
@@ -169,6 +173,16 @@ export function JobCard({
         {(status === "in-progress" || status === "in_progress") && onComplete && (
           <Button size="sm" className="flex-1 bg-success hover:bg-success/90" onClick={onComplete}>
             Mark Completed
+          </Button>
+        )}
+        {status === "pending" && onBid && (
+          <Button size="sm" className="flex-1 bg-primary hover:bg-primary/90" onClick={onBid}>
+            Place Bid
+          </Button>
+        )}
+        {onViewBids && (
+          <Button variant="outline" size="sm" className="flex-1" onClick={onViewBids}>
+            View Bids
           </Button>
         )}
       </div>

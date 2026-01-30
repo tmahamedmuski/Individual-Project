@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { JobCard } from "@/components/dashboard/JobCard";
+import { BidDialog } from "@/components/dashboard/BidDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -79,6 +80,8 @@ export default function WorkerDashboard() {
   const { toast } = useToast();
   const [pendingJobs, setPendingJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
+  const [selectedJobForBid, setSelectedJobForBid] = useState<{ id: string, title: string } | null>(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -205,6 +208,10 @@ export default function WorkerDashboard() {
                     onAccept={() => { }}
                     onDecline={() => { }}
                     onView={() => { }}
+                    onBid={() => {
+                      setSelectedJobForBid({ id: job.id, title: job.title });
+                      setIsBidDialogOpen(true);
+                    }}
                   />
                 ))}
               </TabsContent>
@@ -285,6 +292,14 @@ export default function WorkerDashboard() {
           </div>
         </div>
       </div>
+      {selectedJobForBid && (
+        <BidDialog
+          isOpen={isBidDialogOpen}
+          onClose={() => setIsBidDialogOpen(false)}
+          jobId={selectedJobForBid.id}
+          jobTitle={selectedJobForBid.title}
+        />
+      )}
     </DashboardLayout>
   );
 }

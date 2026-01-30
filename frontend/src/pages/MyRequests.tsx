@@ -1,6 +1,7 @@
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { JobCard } from "@/components/dashboard/JobCard";
+import { BidList } from "@/components/dashboard/BidList";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus } from "lucide-react";
@@ -18,6 +19,8 @@ export default function MyRequests() {
     const { toast } = useToast();
     const [myRequests, setMyRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isBidListOpen, setIsBidListOpen] = useState(false);
+    const [selectedJobForBids, setSelectedJobForBids] = useState<{ id: string, title: string } | null>(null);
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -112,6 +115,10 @@ export default function MyRequests() {
                                                 status={job.status}
                                                 worker={job.worker}
                                                 variant="requester"
+                                                onViewBids={() => {
+                                                    setSelectedJobForBids({ id: job.id, title: job.title });
+                                                    setIsBidListOpen(true);
+                                                }}
                                                 onView={() => { }}
                                                 onEdit={() => navigate(`/requester/edit-request/${job.id}`)}
                                                 onDelete={async () => {
@@ -160,6 +167,14 @@ export default function MyRequests() {
                     ))}
                 </Tabs>
             </div>
+            {selectedJobForBids && (
+                <BidList
+                    isOpen={isBidListOpen}
+                    onClose={() => setIsBidListOpen(false)}
+                    jobId={selectedJobForBids.id}
+                    jobTitle={selectedJobForBids.title}
+                />
+            )}
         </DashboardLayout>
     );
 }
