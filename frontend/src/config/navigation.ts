@@ -8,7 +8,8 @@ import {
     Briefcase,
     User,
     MessageSquare,
-    LucideIcon
+    LucideIcon,
+    Search
 } from "lucide-react";
 
 export interface NavItem {
@@ -45,6 +46,8 @@ export const requesterNavItems: NavItem[] = [
 
 export const brokerNavItems: NavItem[] = [
     { label: "Dashboard", href: "/broker", icon: Home },
+    { label: "My Requests", href: "/broker/requests", icon: Briefcase },
+    { label: "Marketplace", href: "/broker/marketplace", icon: Search },
     { label: "My Workers", href: "/broker/workers", icon: Users },
     { label: "Job Applications", href: "/broker/jobs", icon: Briefcase, badge: 8 },
     { label: "Messages", href: "/broker/messages", icon: MessageSquare },

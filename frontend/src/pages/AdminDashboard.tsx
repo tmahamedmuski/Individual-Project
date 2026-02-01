@@ -132,17 +132,17 @@ export default function AdminDashboard() {
     if (!confirm("Are you sure you want to approve this deletion request? The user account will be permanently deleted.")) return;
     try {
       await api.put(`/admin/deletion-requests/${requestId}/approve`);
-      toast({ 
-        title: "Request Approved", 
-        description: "Account deletion request approved and user account deleted" 
+      toast({
+        title: "Request Approved",
+        description: "Account deletion request approved and user account deleted"
       });
       fetchDeletionRequests();
       fetchUsers();
     } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.message || "Failed to approve request", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to approve request",
+        variant: "destructive"
       });
     }
   };
@@ -150,16 +150,16 @@ export default function AdminDashboard() {
   const rejectDeletionRequest = async (requestId: string) => {
     try {
       await api.put(`/admin/deletion-requests/${requestId}/reject`);
-      toast({ 
-        title: "Request Rejected", 
-        description: "Account deletion request has been rejected" 
+      toast({
+        title: "Request Rejected",
+        description: "Account deletion request has been rejected"
       });
       fetchDeletionRequests();
     } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.response?.data?.message || "Failed to reject request", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to reject request",
+        variant: "destructive"
       });
     }
   };
@@ -420,11 +420,11 @@ export default function AdminDashboard() {
                                 {new Date(request.createdAt).toLocaleDateString()}
                               </TableCell>
                               <TableCell>
-                                <Badge 
+                                <Badge
                                   variant={
-                                    request.status === 'approved' ? 'default' : 
-                                    request.status === 'rejected' ? 'destructive' : 
-                                    'secondary'
+                                    request.status === 'approved' ? 'default' :
+                                      request.status === 'rejected' ? 'destructive' :
+                                        'secondary'
                                   }
                                 >
                                   {request.status}
@@ -433,16 +433,16 @@ export default function AdminDashboard() {
                               <TableCell>
                                 {request.status === 'pending' ? (
                                   <div className="flex gap-2">
-                                    <Button 
-                                      size="sm" 
-                                      className="bg-success hover:bg-success/90" 
+                                    <Button
+                                      size="sm"
+                                      className="bg-success hover:bg-success/90"
                                       onClick={() => approveDeletionRequest(request._id)}
                                     >
                                       <Check className="h-4 w-4" />
                                     </Button>
-                                    <Button 
-                                      size="sm" 
-                                      variant="destructive" 
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
                                       onClick={() => rejectDeletionRequest(request._id)}
                                     >
                                       <X className="h-4 w-4" />
@@ -476,7 +476,7 @@ export default function AdminDashboard() {
               Complete information about the user
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedUser && (
             <div className="space-y-6">
               {/* Basic Information */}
@@ -547,6 +547,17 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                 )}
+                {selectedUser.addedBy && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Users className="h-4 w-4" />
+                      Added By (Broker)
+                    </div>
+                    <p className="text-sm text-muted-foreground font-mono">
+                      {selectedUser.addedBy}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Address */}
@@ -588,9 +599,9 @@ export default function AdminDashboard() {
                     NIC Photo
                   </div>
                   <div className="border rounded-md p-2">
-                    <img 
-                      src={getImageUrl(selectedUser.nicPhoto)} 
-                      alt="NIC Photo" 
+                    <img
+                      src={getImageUrl(selectedUser.nicPhoto)}
+                      alt="NIC Photo"
                       className="max-w-full h-auto max-h-96 rounded-md object-contain"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '';
@@ -610,9 +621,9 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {selectedUser.workingPhotos.map((photo: string, idx: number) => (
                       <div key={idx} className="border rounded-md p-2">
-                        <img 
-                          src={getImageUrl(photo)} 
-                          alt={`Working Photo ${idx + 1}`} 
+                        <img
+                          src={getImageUrl(photo)}
+                          alt={`Working Photo ${idx + 1}`}
                           className="w-full h-auto max-h-48 rounded-md object-contain"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/placeholder-image.png';
@@ -636,28 +647,28 @@ export default function AdminDashboard() {
                       // Check if file is PDF by checking filename
                       const filename = letter.split('/').pop() || '';
                       const isPDF = filename.toLowerCase().endsWith('.pdf');
-                      
+
                       return (
                         <div key={idx} className="border rounded-md p-2">
                           {isPDF ? (
-                            <a 
-                              href={getImageUrl(letter)} 
-                              target="_blank" 
+                            <a
+                              href={getImageUrl(letter)}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm text-primary hover:underline"
                             >
                               View PDF {idx + 1}
                             </a>
                           ) : (
-                            <img 
-                              src={getImageUrl(letter)} 
-                              alt={`GP Letter ${idx + 1}`} 
+                            <img
+                              src={getImageUrl(letter)}
+                              alt={`GP Letter ${idx + 1}`}
                               className="w-full h-auto max-h-48 rounded-md object-contain"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = '/placeholder-image.png';
                               }}
                             />
-                          )}g
+                          )}
                         </div>
                       );
                     })}
@@ -667,7 +678,7 @@ export default function AdminDashboard() {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4 border-t">
-                <Button 
+                <Button
                   onClick={() => updateUserStatus(selectedUser._id, 'approved')}
                   className="bg-success hover:bg-success/90"
                   disabled={selectedUser.accountStatus === 'approved'}
@@ -675,7 +686,7 @@ export default function AdminDashboard() {
                   <Check className="h-4 w-4 mr-2" />
                   Approve
                 </Button>
-                <Button 
+                <Button
                   onClick={() => updateUserStatus(selectedUser._id, 'rejected')}
                   variant="destructive"
                   disabled={selectedUser.accountStatus === 'rejected'}
@@ -683,7 +694,7 @@ export default function AdminDashboard() {
                   <X className="h-4 w-4 mr-2" />
                   Reject
                 </Button>
-                <Button 
+                <Button
                   onClick={() => updateUserStatus(selectedUser._id, 'pending')}
                   variant="outline"
                   disabled={selectedUser.accountStatus === 'pending'}

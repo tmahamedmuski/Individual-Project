@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { requesterNavItems } from "@/config/navigation";
+import { requesterNavItems, brokerNavItems, adminNavItems } from "@/config/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/axios";
@@ -21,6 +21,39 @@ export default function MyRequests() {
     const [loading, setLoading] = useState(true);
     const [isBidListOpen, setIsBidListOpen] = useState(false);
     const [selectedJobForBids, setSelectedJobForBids] = useState<{ id: string, title: string } | null>(null);
+
+    const getNavItems = () => {
+        switch (user?.role) {
+            case 'broker':
+                return brokerNavItems;
+            case 'admin':
+                return adminNavItems;
+            default:
+                return requesterNavItems;
+        }
+    };
+
+    const getCreateRequestPath = () => {
+        switch (user?.role) {
+            case 'broker':
+                return '/broker/create-request';
+            case 'admin':
+                return '/admin/create-request'; // Assuming admin can too, or just hide button
+            default:
+                return '/requester/create-request';
+        }
+    };
+
+    const getEditRequestPath = (id: string) => {
+        switch (user?.role) {
+            case 'broker':
+                return `/broker/edit-request/${id}`;
+            case 'admin':
+                return `/admin/edit-request/${id}`;
+            default:
+                return `/requester/edit-request/${id}`;
+        }
+    };
 
     useEffect(() => {
         const fetchRequests = async () => {
@@ -56,8 +89,8 @@ export default function MyRequests() {
 
     return (
         <DashboardLayout
-            navItems={requesterNavItems}
-            role="requester"
+            navItems={getNavItems()}
+            role={(user?.role as "broker" | "admin" | "requester" | "worker") || "requester"}
             userName={user?.fullName || "User"}
             userEmail={user?.email || "user@example.com"}
         >
@@ -69,7 +102,7 @@ export default function MyRequests() {
                             View and manage the service requests you have posted.
                         </p>
                     </div>
-                    <Button onClick={() => navigate('/requester/create-request')}>
+                    <Button onClick={() => navigate(getCreateRequestPath())}>
                         <Plus className="h-4 w-4 mr-2" />
                         Post New Request
                     </Button>
@@ -120,7 +153,7 @@ export default function MyRequests() {
                                                     setIsBidListOpen(true);
                                                 }}
                                                 onView={() => { }}
-                                                onEdit={() => navigate(`/requester/edit-request/${job.id}`)}
+                                                onEdit={() => navigate(getEditRequestPath(job.id))}
                                                 onDelete={async () => {
                                                     if (window.confirm("Are you sure you want to delete this request?")) {
                                                         try {

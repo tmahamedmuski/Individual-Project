@@ -16,6 +16,7 @@ import MyRequests from "./pages/MyRequests";
 import RequesterDashboard from "./pages/RequesterDashboard";
 import WorkerDashboard from "./pages/WorkerDashboard";
 import BrokerDashboard from "./pages/BrokerDashboard";
+import AddWorker from "./pages/AddWorker";
 import AdminDashboard from "./pages/AdminDashboard";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -60,6 +61,10 @@ const App = () => (
               </Route>
 
               <Route element={<ProtectedRoute requiredRole="broker" />}>
+                <Route path="/broker/create-request" element={<CreateRequest />} />
+                <Route path="/broker/edit-request/:id" element={<EditRequest />} />
+                <Route path="/broker/requests" element={<MyRequests />} />
+                <Route path="/broker/add-worker" element={<AddWorker />} />
                 <Route path="/broker/*" element={<BrokerDashboard />} />
               </Route>
 

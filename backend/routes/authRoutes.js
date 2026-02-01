@@ -12,6 +12,7 @@ const {
     forgotPassword,
     verifyOTP,
     resetPassword,
+    getManagedUsers,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const uploadMiddleware = require('../middleware/uploadMiddleware');
@@ -21,6 +22,7 @@ const uploadRegistration = uploadMiddleware.uploadRegistration;
 router.post('/register', uploadRegistration, registerUser);
 router.post('/login', loginUser);
 router.get('/me', protect, getMe);
+router.get('/managed-users', protect, getManagedUsers);
 router.put('/password', protect, updatePassword);
 router.post('/request-deletion', protect, requestAccountDeletion);
 router.delete('/delete', protect, deleteAccount);

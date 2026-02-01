@@ -15,7 +15,7 @@ const registerUser = async (req, res) => {
     try {
         // Parse JSON fields from req.body (multer adds them as strings)
         let { fullName, email, password, role, phone, location, nic, skills, address } = req.body;
-        
+
         // If location is a string, parse it
         if (typeof location === 'string') {
             try {
@@ -110,12 +110,14 @@ const registerUser = async (req, res) => {
             workingPhotos: workingPhotosPaths,
             gpLetters: gpLettersPaths,
             accountStatus: 'pending', // Explicitly set status
+            addedBy: req.body.addedBy || null, // Capture addedBy if present
         });
 
         console.log('User created with ID:', user._id);
         console.log('Saved NIC Photo:', user.nicPhoto);
         console.log('Saved Working Photos:', user.workingPhotos);
         console.log('Saved GP Letters:', user.gpLetters);
+        console.log('Added By:', user.addedBy);
 
         if (user) {
             // Send registration confirmation email
@@ -144,6 +146,18 @@ const registerUser = async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ message: error.message })
+    }
+};
+
+// @desc    Get users managed by the current user (Broker)
+// @route   GET /api/auth/managed-users
+// @access  Private
+const getManagedUsers = async (req, res) => {
+    try {
+        const users = await User.find({ addedBy: req.user.id }).select('-password');
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -260,7 +274,7 @@ const deleteAccount = async (req, res) => {
         if (user) {
             // Delete any pending deletion requests
             await AccountDeletionRequest.deleteMany({ user: user._id });
-            
+
             await user.deleteOne();
             res.json({ message: 'Account deleted successfully' });
         } else {
@@ -289,7 +303,7 @@ const uploadNICPhoto = async (req, res) => {
         if (user.nicPhoto) {
             // Handle both full URL and path formats
             let oldPath = user.nicPhoto;
-            
+
             // If it's a full URL, extract the path
             if (oldPath.startsWith('http://') || oldPath.startsWith('https://')) {
                 oldPath = oldPath.replace(`${req.protocol}://${req.get('host')}/uploads/`, '');
@@ -297,7 +311,7 @@ const uploadNICPhoto = async (req, res) => {
                 // If it's already a path, remove the leading /uploads/
                 oldPath = oldPath.replace('/uploads/', '');
             }
-            
+
             const oldFilePath = path.join(__dirname, '../uploads', oldPath);
             if (fs.existsSync(oldFilePath)) {
                 try {
@@ -340,16 +354,16 @@ const deleteNICPhoto = async (req, res) => {
         if (user.nicPhoto) {
             // Handle both full URL and path formats
             let filePath = user.nicPhoto;
-            
+
             // If it's a full URL, extract the path
             if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
                 filePath = filePath.replace(/^https?:\/\/[^/]+/, '');
             }
-            
+
             // Remove leading slash and construct full file path
             const relativePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
             const fullFilePath = path.join(__dirname, '../uploads', relativePath);
-            
+
             // Delete file from filesystem
             if (fs.existsSync(fullFilePath)) {
                 try {
@@ -546,5 +560,6 @@ module.exports = {
     forgotPassword,
     verifyOTP,
     resetPassword,
+    getManagedUsers,
 };
 

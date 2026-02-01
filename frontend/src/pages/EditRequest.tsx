@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { requesterNavItems } from "@/config/navigation";
+import { requesterNavItems, brokerNavItems, adminNavItems } from "@/config/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +22,9 @@ import { Loader2 } from "lucide-react";
 import { MapPicker } from "@/components/ui/MapPicker";
 
 interface Location {
-  lat: number;
-  lng: number;
-  address?: string;
+    lat: number;
+    lng: number;
+    address?: string;
 }
 
 export default function EditRequest() {
@@ -48,6 +48,41 @@ export default function EditRequest() {
 
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
 
+    const getNavItems = () => {
+        switch (user?.role) {
+            case 'broker':
+                return brokerNavItems;
+            case 'admin':
+                return adminNavItems;
+            default:
+                return requesterNavItems;
+        }
+    };
+
+    const getDashboardPath = () => {
+        switch (user?.role) {
+            case 'broker':
+                return '/broker';
+            case 'worker':
+                return '/worker';
+            case 'admin':
+                return '/admin';
+            default:
+                return '/requester';
+        }
+    };
+
+    const getRequestsPath = () => {
+        switch (user?.role) {
+            case 'broker':
+                return '/broker/requests';
+            case 'admin':
+                return '/admin/requests';
+            default:
+                return '/requester/requests';
+        }
+    };
+
     useEffect(() => {
         const fetchRequest = async () => {
             try {
@@ -69,7 +104,7 @@ export default function EditRequest() {
                     description: "Failed to load request details.",
                     variant: "destructive",
                 });
-                navigate("/requester/requests");
+                navigate(getRequestsPath());
             } finally {
                 setIsFetching(false);
             }
@@ -125,7 +160,7 @@ export default function EditRequest() {
                 title: "Request Updated",
                 description: "Your service request has been successfully updated.",
             });
-            navigate("/requester/requests");
+            navigate(getRequestsPath());
         } catch (error: any) {
             console.error("Error updating request:", error);
             toast({
@@ -141,8 +176,8 @@ export default function EditRequest() {
     if (isFetching) {
         return (
             <DashboardLayout
-                navItems={requesterNavItems}
-                role="requester"
+                navItems={getNavItems()}
+                role={(user?.role as "broker" | "admin" | "requester" | "worker") || "requester"}
                 userName={user?.fullName || "User"}
                 userEmail={user?.email || "user@example.com"}
             >
@@ -155,8 +190,8 @@ export default function EditRequest() {
 
     return (
         <DashboardLayout
-            navItems={requesterNavItems}
-            role="requester"
+            navItems={getNavItems()}
+            role={(user?.role as "broker" | "admin" | "requester" | "worker") || "requester"}
             userName={user?.fullName || "User"}
             userEmail={user?.email || "user@example.com"}
         >
@@ -289,7 +324,7 @@ export default function EditRequest() {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate("/requester/requests")}
+                                    onClick={() => navigate(getRequestsPath())}
                                     disabled={isLoading}
                                 >
                                     Cancel

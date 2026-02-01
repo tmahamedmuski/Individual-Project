@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { requesterNavItems } from "@/config/navigation";
+import { requesterNavItems, brokerNavItems, adminNavItems } from "@/config/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,47 +22,47 @@ import { Loader2 } from "lucide-react";
 import { MapPicker } from "@/components/ui/MapPicker";
 
 interface Location {
-  lat: number;
-  lng: number;
-  address?: string;
+    lat: number;
+    lng: number;
+    address?: string;
 }
 
 export default function CreateRequest() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
-    serviceType: "",
-    description: "",
-    location: "",
-    date: "",
-    time: "",
-    phoneNumber: user?.phone || "",
-    budget: "",
-  });
+    const [formData, setFormData] = useState({
+        serviceType: "",
+        description: "",
+        location: "",
+        date: "",
+        time: "",
+        phoneNumber: user?.phone || "",
+        budget: "",
+    });
 
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+    const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
 
-  const handleSelectChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, serviceType: value }));
-  };
+    const handleSelectChange = (value: string) => {
+        setFormData((prev) => ({ ...prev, serviceType: value }));
+    };
 
-  const handleLocationSelect = (loc: Location) => {
-    setSelectedLocation(loc);
-    setFormData((prev) => ({
-      ...prev,
-      location: loc.address || `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`,
-    }));
-  };
+    const handleLocationSelect = (loc: Location) => {
+        setSelectedLocation(loc);
+        setFormData((prev) => ({
+            ...prev,
+            location: loc.address || `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`,
+        }));
+    };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
@@ -78,16 +78,20 @@ export default function CreateRequest() {
 
         try {
             await api.post("/services", {
-              ...formData,
-              // include raw coordinates for backend if needed
-              latitude: selectedLocation?.lat,
-              longitude: selectedLocation?.lng,
+                ...formData,
+                // include raw coordinates for backend if needed
+                latitude: selectedLocation?.lat,
+                longitude: selectedLocation?.lng,
             });
             toast({
                 title: "Request Posted",
                 description: "Your service request has been successfully posted.",
             });
-            navigate("/requester");
+            if (user?.role === 'broker') {
+                navigate("/broker/requests");
+            } else {
+                navigate("/requester");
+            }
         } catch (error: any) {
             console.error("Error posting request:", error);
             toast({
@@ -100,10 +104,34 @@ export default function CreateRequest() {
         }
     };
 
-  return (
+    const getNavItems = () => {
+        switch (user?.role) {
+            case 'broker':
+                return brokerNavItems;
+            case 'admin':
+                return adminNavItems;
+            default:
+                return requesterNavItems;
+        }
+    };
+
+    const getDashboardPath = () => {
+        switch (user?.role) {
+            case 'broker':
+                return '/broker';
+            case 'worker':
+                return '/worker';
+            case 'admin':
+                return '/admin';
+            default:
+                return '/requester';
+        }
+    };
+
+    return (
         <DashboardLayout
-            navItems={requesterNavItems}
-            role="requester"
+            navItems={getNavItems()}
+            role={(user?.role as "broker" | "admin" | "requester" | "worker") || "requester"}
             userName={user?.fullName || "User"}
             userEmail={user?.email || "user@example.com"}
         >
@@ -156,19 +184,19 @@ export default function CreateRequest() {
                             </div>
 
                             <div className="space-y-2">
-                              <Label htmlFor="location">Location</Label>
-                              {/* Read-only address filled from map pin */}
-                              <Input
-                                id="location"
-                                name="location"
-                                placeholder="Pin your location on the map below"
-                                value={formData.location}
-                                onChange={handleChange}
-                                readOnly
-                              />
-                              <div className="mt-3">
-                                <MapPicker onLocationSelect={handleLocationSelect} />
-                              </div>
+                                <Label htmlFor="location">Location</Label>
+                                {/* Read-only address filled from map pin */}
+                                <Input
+                                    id="location"
+                                    name="location"
+                                    placeholder="Pin your location on the map below"
+                                    value={formData.location}
+                                    onChange={handleChange}
+                                    readOnly
+                                />
+                                <div className="mt-3">
+                                    <MapPicker onLocationSelect={handleLocationSelect} />
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -222,7 +250,7 @@ export default function CreateRequest() {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => navigate("/requester")}
+                                    onClick={() => navigate(getDashboardPath())}
                                     disabled={isLoading}
                                 >
                                     Cancel
