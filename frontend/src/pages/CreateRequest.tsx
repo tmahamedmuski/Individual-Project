@@ -40,7 +40,6 @@ export default function CreateRequest() {
         date: "",
         time: "",
         phoneNumber: user?.phone || "",
-        budget: "",
     });
 
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -66,7 +65,7 @@ export default function CreateRequest() {
         e.preventDefault();
         setIsLoading(true);
 
-        if (!formData.serviceType || !formData.description || !formData.location || !formData.date || !formData.time || !formData.phoneNumber || !formData.budget) {
+        if (!formData.serviceType || !formData.description || !formData.location || !formData.date || !formData.time || !formData.phoneNumber) {
             toast({
                 title: "Missing Fields",
                 description: "Please fill in all fields.",
@@ -210,17 +209,7 @@ export default function CreateRequest() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="budget">Budget (LKR)</Label>
-                                <Input
-                                    id="budget"
-                                    name="budget"
-                                    type="number"
-                                    placeholder="e.g., 5000"
-                                    value={formData.budget}
-                                    onChange={handleChange}
-                                />
-                            </div>
+
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">

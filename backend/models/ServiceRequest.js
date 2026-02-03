@@ -28,7 +28,6 @@ const serviceRequestSchema = mongoose.Schema(
         },
         budget: {
             type: Number,
-            required: [true, 'Please add a budget'],
         },
         status: {
             type: String,

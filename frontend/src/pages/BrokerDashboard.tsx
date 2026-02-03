@@ -42,6 +42,8 @@ import { useNavigate } from "react-router-dom";
 
 
 
+import { BidDialog } from "@/components/dashboard/BidDialog";
+
 const pendingApplications = [
   {
     id: 1,
@@ -69,6 +71,14 @@ export default function BrokerDashboard() {
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [managedWorkers, setManagedWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
+  const [selectedJobForBid, setSelectedJobForBid] = useState<{ id: string, title: string } | null>(null);
+
+  const handleBid = (job: any) => {
+    setSelectedJobForBid({ id: job.id, title: job.title });
+    setIsBidDialogOpen(true);
+  };
+
 
   // Fetch Managed Workers
   useEffect(() => {
@@ -405,11 +415,7 @@ export default function BrokerDashboard() {
                     requester={job.requester}
                     variant="worker"
                     onView={() => { }}
-                    onBid={() => {
-                      // Logic to bid on behalf of a worker?
-                      // For now, simpler implementation
-                      toast({ description: "Bidding functionality coming soon" })
-                    }}
+                    onBid={() => handleBid(job)}
                   />
                 ))
               )}
@@ -417,6 +423,12 @@ export default function BrokerDashboard() {
           </TabsContent>
         </Tabs>
 
+        <BidDialog
+          isOpen={isBidDialogOpen}
+          onClose={() => setIsBidDialogOpen(false)}
+          jobId={selectedJobForBid?.id || ""}
+          jobTitle={selectedJobForBid?.title || ""}
+        />
       </div>
     </DashboardLayout>
   );
