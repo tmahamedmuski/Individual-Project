@@ -23,7 +23,6 @@ import {
   Plus,
   Search,
   Star,
-  UserPlus,
   Users,
 } from "lucide-react";
 import {
@@ -172,10 +171,7 @@ export default function BrokerDashboard() {
               <Plus className="h-4 w-4 mr-2" />
               Post Request
             </Button>
-            <Button className="w-fit bg-broker hover:bg-broker/90" onClick={() => navigate('/broker/add-worker')}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Worker
-            </Button>
+
           </div>
         </div>
 
