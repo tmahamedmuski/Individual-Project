@@ -63,6 +63,10 @@ const pendingApplications = [
   },
 ];
 
+import { ReviewModal } from "@/components/ReviewModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { reviewService } from "@/api/reviewService";
+
 export default function BrokerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -74,9 +78,43 @@ export default function BrokerDashboard() {
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
   const [selectedJobForBid, setSelectedJobForBid] = useState<{ id: string, title: string } | null>(null);
 
+  // Job Details Modal State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
+
+  // Review Modal State
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [selectedJobForReview, setSelectedJobForReview] = useState<{ id: string, workerId: string, workerName: string } | null>(null);
+
   const handleBid = (job: any) => {
     setSelectedJobForBid({ id: job.id, title: job.title });
     setIsBidDialogOpen(true);
+  };
+
+  const handleRateWorker = async (rating: number, comment: string) => {
+    if (!selectedJobForReview) return;
+
+    try {
+      await reviewService.createReview({
+        revieweeId: selectedJobForReview.workerId,
+        serviceRequestId: selectedJobForReview.id,
+        rating,
+        comment
+      });
+
+      toast({
+        title: "Review Submitted",
+        description: "Thank you for your feedback!",
+      });
+    } catch (error: any) {
+      console.error("Error submitting review:", error);
+      const errorMessage = error.response?.data?.message || "Failed to submit review.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
 
@@ -117,7 +155,7 @@ export default function BrokerDashboard() {
           duration: "N/A",
           budget: req.budget,
           status: req.status,
-          worker: req.worker ? { name: req.worker.fullName, rating: req.worker.rating || 0 } : undefined,
+          worker: req.worker ? { id: req.worker._id, name: req.worker.fullName, rating: req.worker.rating || 0 } : undefined,
         }));
         setMyRequests(formattedRequests);
       } catch (error) {
@@ -379,8 +417,64 @@ export default function BrokerDashboard() {
                     status={job.status}
                     worker={job.worker}
                     variant="requester"
-                    onView={() => { }}
+                    onView={() => {
+                      setSelectedJobDetails(job);
+                      setIsDetailsOpen(true);
+                    }}
                     onEdit={() => navigate(`/broker/edit-request/${job.id}`)}
+                    onDelete={async () => {
+                      if (window.confirm("Are you sure you want to delete this request?")) {
+                        try {
+                          await api.delete(`/services/${job.id}`);
+                          setMyRequests(prev => prev.filter(req => req.id !== job.id));
+                          toast({
+                            title: "Request Deleted",
+                            description: "The service request has been deleted.",
+                          });
+                        } catch (error) {
+                          console.error("Error deleting request:", error);
+                          toast({
+                            title: "Error",
+                            description: "Failed to delete request.",
+                            variant: "destructive",
+                          });
+                        }
+                      }
+                    }}
+                    onComplete={async () => {
+                      if (window.confirm("Mark this job as completed?")) {
+                        try {
+                          await api.put(`/services/${job.id}`, { status: 'completed' });
+                          setMyRequests(prev => prev.map(req => req.id === job.id ? { ...req, status: 'completed' } : req));
+                          toast({
+                            title: "Job Completed",
+                            description: "The job has been marked as completed.",
+                          });
+                        } catch (error) {
+                          console.error("Error completing request:", error);
+                          toast({
+                            title: "Error",
+                            description: "Failed to update status.",
+                            variant: "destructive",
+                          });
+                        }
+                      }
+                    }}
+                    onRate={() => {
+                      if (job.worker) {
+                        setSelectedJobForReview({
+                          id: job.id,
+                          workerId: job.worker.id || job.worker._id, // Handle mismatch if any
+                          workerName: job.worker.name
+                        });
+                        setIsReviewOpen(true);
+                      } else {
+                        toast({
+                          title: "Info",
+                          description: "No worker assigned to rate.",
+                        });
+                      }
+                    }}
                   />
                 ))
               )}
@@ -414,7 +508,10 @@ export default function BrokerDashboard() {
                     status={job.status}
                     requester={job.requester}
                     variant="worker"
-                    onView={() => { }}
+                    onView={() => {
+                      setSelectedJobDetails(job);
+                      setIsDetailsOpen(true);
+                    }}
                     onBid={() => handleBid(job)}
                   />
                 ))
@@ -429,6 +526,22 @@ export default function BrokerDashboard() {
           jobId={selectedJobForBid?.id || ""}
           jobTitle={selectedJobForBid?.title || ""}
         />
+        {selectedJobForReview && (
+          <ReviewModal
+            isOpen={isReviewOpen}
+            onClose={() => setIsReviewOpen(false)}
+            onSubmit={handleRateWorker}
+            userName={selectedJobForReview.workerName}
+          />
+        )}
+        {selectedJobDetails && (
+          <JobDetailsModal
+            isOpen={isDetailsOpen}
+            onClose={() => setIsDetailsOpen(false)}
+            job={selectedJobDetails}
+            viewerRole="broker"
+          />
+        )}
       </div>
     </DashboardLayout>
   );

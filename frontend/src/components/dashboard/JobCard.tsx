@@ -3,42 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar, Clock, MapPin, Star, Banknote, Phone } from "lucide-react";
+import { JobCardProps } from "./JobCardProps.1";
 
 export type JobStatus = "pending" | "accepted" | "in-progress" | "in_progress" | "completed" | "cancelled";
-
-interface JobCardProps {
-  title: string;
-  description: string;
-  location: string;
-  date: string;
-  time: string;
-
-  duration: string;
-  budget?: number; // Optional as not all cards might have it yet, or make it required if guaranteed
-  status: JobStatus;
-  requester?: {
-    name: string;
-    avatar?: string;
-    rating?: number;
-    phone?: string;
-  };
-  worker?: {
-    name: string;
-    avatar?: string;
-    rating?: number;
-    phone?: string;
-  };
-  onAccept?: () => void;
-  onDecline?: () => void;
-  onView?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onComplete?: () => void;
-  onBid?: () => void;
-  onViewBids?: () => void;
-  variant?: "requester" | "worker" | "broker";
-  className?: string;
-}
 
 export function JobCard({
   title,
@@ -60,6 +27,8 @@ export function JobCard({
   onComplete,
   onBid,
   onViewBids,
+  onRate,
+  onMessage,
   variant = "requester",
   className,
 }: JobCardProps) {
@@ -183,6 +152,17 @@ export function JobCard({
         {onViewBids && (
           <Button variant="outline" size="sm" className="flex-1" onClick={onViewBids}>
             View Bids
+          </Button>
+        )}
+        {status === "completed" && onRate && (
+          <Button size="sm" className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white" onClick={onRate}>
+            Rate User
+          </Button>
+        )}
+        {/* Message Button - Show if accepted/in-progress/completed and person exists */}
+        {["accepted", "in-progress", "in_progress", "completed"].includes(status) && person && onMessage && (
+          <Button variant="secondary" size="sm" className="flex-1" onClick={onMessage}>
+            Message
           </Button>
         )}
       </div>

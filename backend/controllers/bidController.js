@@ -51,7 +51,50 @@ const getBidsForRequest = asyncHandler(async (req, res) => {
     res.status(200).json(bids);
 });
 
+const acceptBid = asyncHandler(async (req, res) => {
+    const { bidId } = req.params;
+
+    // Find the bid
+    const bid = await Bid.findById(bidId).populate('serviceRequest');
+
+    if (!bid) {
+        res.status(404);
+        throw new Error('Bid not found');
+    }
+
+    const serviceRequest = await ServiceRequest.findById(bid.serviceRequest._id);
+
+    // Check if user is the owner of the service request
+    if (serviceRequest.requester.toString() !== req.user.id) {
+        res.status(401);
+        throw new Error('Not authorized to accept bids for this request');
+    }
+
+    // Update Bid status
+    bid.status = 'accepted';
+    await bid.save();
+
+    // Update Service Request
+    serviceRequest.worker = bid.worker;
+    serviceRequest.status = 'in_progress';
+    serviceRequest.budget = bid.amount; // Update budget to agreed amount
+    await serviceRequest.save();
+
+    // Reject other bids for this request (Optional)
+    // await Bid.updateMany(
+    //     { serviceRequest: serviceRequest._id, _id: { $ne: bidId } },
+    //     { status: 'rejected' }
+    // );
+
+    res.status(200).json({
+        message: 'Bid accepted successfully',
+        bid,
+        serviceRequest
+    });
+});
+
 module.exports = {
     placeBid,
     getBidsForRequest,
+    acceptBid,
 };

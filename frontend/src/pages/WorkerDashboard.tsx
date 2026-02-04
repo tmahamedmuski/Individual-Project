@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Briefcase,
@@ -14,6 +15,7 @@ import {
   DollarSign,
   Home,
   MessageSquare,
+  Search,
   Settings,
   Star,
   TrendingUp,
@@ -23,93 +25,123 @@ import { workerNavItems } from "@/config/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/axios";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-
-
-
-const pendingJobs = [
-  {
-    id: 1,
-    title: "Plumbing Repair",
-    description: "Fix leaking pipe in kitchen sink",
-    location: "Colombo 07",
-    date: "Jan 26, 2026",
-    time: "10:00 AM",
-    duration: "2 hours",
-    budget: 5000,
-    status: "pending" as const,
-    requester: { name: "ABC Company", rating: 4.9 },
-  },
-  {
-    id: 2,
-    title: "Bathroom Installation",
-    description: "Install new shower and bathroom fittings",
-    location: "Colombo 03",
-    date: "Jan 27, 2026",
-    time: "08:00 AM",
-    duration: "Full day",
-    budget: 15000,
-    status: "pending" as const,
-    requester: { name: "University of Moratuwa", rating: 5.0 },
-  },
-];
-
-const activeJobs = [
-  {
-    id: 3,
-    title: "Water Heater Repair",
-    description: "Service and repair water heater",
-    location: "Colombo 05",
-    date: "Jan 24, 2026",
-    time: "02:00 PM",
-    duration: "3 hours",
-    budget: 3500,
-    status: "in-progress" as const,
-    requester: { name: "Sarah Jayasinghe", rating: 4.8 },
-  },
-];
-
-const recentReviews = [
-  { requester: "ABC Company", rating: 5, comment: "Excellent work! Very professional and on time." },
-  { requester: "Sarah J.", rating: 4, comment: "Good job, would recommend." },
-  { requester: "University", rating: 5, comment: "Quick and efficient service." },
-];
+import { ReviewModal } from "@/components/ReviewModal";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
+import { reviewService } from "@/api/reviewService";
 
 export default function WorkerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [pendingJobs, setPendingJobs] = useState<any[]>([]);
+  const [completedJobs, setCompletedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
   const [selectedJobForBid, setSelectedJobForBid] = useState<{ id: string, title: string } | null>(null);
 
+  // Job Details Modal State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
+
+  // Review Modal State
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [selectedJobForReview, setSelectedJobForReview] = useState<{ id: string, requesterId: string, requesterName: string } | null>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [myStats, setMyStats] = useState({ rating: 0, reviewCount: 0 });
+
+  const handleRateRequester = async (rating: number, comment: string) => {
+    if (!selectedJobForReview) return;
+
+    try {
+      await reviewService.createReview({
+        revieweeId: selectedJobForReview.requesterId,
+        serviceRequestId: selectedJobForReview.id,
+        rating,
+        comment
+      });
+
+      toast({
+        title: "Review Submitted",
+        description: "Thank you for your feedback!",
+      });
+      setIsReviewOpen(false); // Close modal on success
+    } catch (error: any) {
+      console.error("Error submitting review:", error);
+      const errorMessage = error.response?.data?.message || "Failed to submit review.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchData = async () => {
       try {
-        const { data } = await api.get('/services/available');
-        // Transform backend data to match JobCard interface if needed
-        const formattedJobs = data.map((job: any) => ({
+        // Fetch available jobs (pending)
+        const { data: availableData } = await api.get('/services/available');
+        const formattedPending = availableData.map((job: any) => ({
           id: job._id,
           title: job.serviceType,
           description: job.description,
           location: job.location,
           date: job.date,
           time: job.time,
-          duration: "N/A", // Backend doesn't store duration yet
+          duration: "N/A",
           budget: job.budget,
           status: job.status,
           requester: {
+            id: job.requester?._id,
             name: job.requester?.fullName || "Unknown",
-            rating: 0,
+            rating: job.requester?.averageRating || 0,
             phone: job.phoneNumber
-          }, // Rating not in User model yet
+          },
         }));
-        setPendingJobs(formattedJobs);
+        setPendingJobs(formattedPending);
+
+        // Fetch my jobs (assigned/completed)
+        const { data: myData } = await api.get('/services/worker/my');
+        const formattedMyJobs = myData.map((job: any) => ({
+          id: job._id,
+          title: job.serviceType,
+          description: job.description,
+          location: job.location,
+          date: job.date,
+          time: job.time,
+          duration: "N/A",
+          budget: job.budget,
+          status: job.status,
+          requester: {
+            id: job.requester?._id,
+            name: job.requester?.fullName || "Unknown",
+            rating: job.requester?.averageRating || 0,
+            phone: job.phoneNumber
+          },
+        }));
+        setCompletedJobs(formattedMyJobs);
+
+        // Fetch my reviews
+        if (user?._id) {
+          try {
+            const myReviews = await reviewService.getUserReviews(user._id);
+            setReviews(myReviews);
+            setMyStats({
+              rating: user.averageRating || 0,
+              reviewCount: user.reviewCount || 0
+            });
+          } catch (e) {
+            console.error("Error fetching reviews", e);
+          }
+        }
+
       } catch (error) {
-        console.error("Error fetching jobs:", error);
+        console.error("Error fetching data:", error);
         toast({
           title: "Error",
-          description: "Failed to load available jobs.",
+          description: "Failed to load dashboard data.",
           variant: "destructive",
         });
       } finally {
@@ -117,128 +149,166 @@ export default function WorkerDashboard() {
       }
     };
 
-    fetchJobs();
-  }, [toast]);
+    fetchData();
+  }, [toast, user]);
 
   return (
     <DashboardLayout
       navItems={workerNavItems}
       role="worker"
-      userName={user?.fullName || "Ajith Bandara"}
-      userEmail={user?.email || "ajith@gmail.com"}
+      userName={user?.fullName || "Worker User"}
+      userEmail={user?.email || "worker@example.com"}
     >
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Welcome, {user?.fullName?.split(' ')[0] || 'Worker'}!</h1>
+            <h1 className="text-2xl font-bold">Worker Dashboard</h1>
             <p className="text-muted-foreground">
-              You have {pendingJobs.length} new job requests waiting
+              Find jobs and manage your work
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge className="bg-success text-success-foreground">
-              Verified Worker
-            </Badge>
-            <Badge variant="outline" className="bg-worker/10 text-worker border-worker/20">
-              Available
-            </Badge>
+          <div className="flex gap-2">
+            <Button className="w-fit">
+              <Search className="h-4 w-4 mr-2" />
+              Find Work
+            </Button>
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Pending Requests"
-            value={pendingJobs.length}
+            title="Jobs Completed"
+            value={completedJobs.filter(j => j.status === 'completed').length}
+            icon={Briefcase}
+            variant="worker"
+          />
+          <StatCard
+            title="Active Jobs"
+            value={completedJobs.filter(j => j.status === 'assigned' || j.status === 'in_progress').length}
             icon={Clock}
             variant="worker"
           />
           <StatCard
-            title="Jobs Completed"
-            value={127}
-            icon={CheckCircle}
-            variant="worker"
-            trend={{ value: 8, isPositive: true }}
-          />
-          <StatCard
             title="Your Rating"
-            value="4.8"
-            subtitle="127 reviews"
+            value={myStats.rating.toFixed(1)}
+            subtitle={`${myStats.reviewCount} reviews`}
             icon={Star}
             variant="worker"
           />
           <StatCard
-            title="This Month"
-            value="Rs. 45,000"
-            icon={DollarSign}
+            title="Total Earnings"
+            value="Rs. 12.5k"
+            icon={CheckCircle}
             variant="worker"
-            trend={{ value: 15, isPositive: true }}
           />
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            <Tabs defaultValue="pending" className="space-y-4">
+            <Tabs defaultValue="marketplace" className="space-y-4">
               <TabsList>
-                <TabsTrigger value="pending">
-                  Pending
-                  <Badge variant="secondary" className="ml-2">
-                    {pendingJobs.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger value="active">Active</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
+                <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
+                <TabsTrigger value="my-jobs">My Jobs</TabsTrigger>
+                <TabsTrigger value="reviews">My Reviews</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="pending" className="space-y-4">
-                {pendingJobs.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    title={job.title}
-                    description={job.description}
-                    location={job.location}
-                    date={job.date}
-                    time={job.time}
-                    duration={job.duration}
-                    status={job.status}
-                    requester={job.requester}
-                    variant="worker"
-                    onAccept={() => { }}
-                    onDecline={() => { }}
-                    onView={() => { }}
-                    onBid={() => {
-                      setSelectedJobForBid({ id: job.id, title: job.title });
-                      setIsBidDialogOpen(true);
-                    }}
-                  />
-                ))}
+              <TabsContent value="marketplace">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Available Jobs */}
+                  {pendingJobs.map((job) => (
+                    <JobCard
+                      key={job.id}
+                      title={job.title}
+                      description={job.description}
+                      location={job.location}
+                      date={job.date}
+                      time={job.time}
+                      duration={job.duration}
+                      budget={job.budget}
+                      status={job.status}
+                      requester={job.requester}
+                      variant="worker"
+                      onView={() => {
+                        setSelectedJobDetails(job);
+                        setIsDetailsOpen(true);
+                      }}
+                      onBid={() => {
+                        setSelectedJobForBid({ id: job.id, title: job.title });
+                        setIsBidDialogOpen(true);
+                      }}
+                    />
+                  ))}
+                  {pendingJobs.length === 0 && (
+                    <p className="text-center col-span-full py-8 text-muted-foreground">No available jobs found.</p>
+                  )}
+                </div>
               </TabsContent>
 
-              <TabsContent value="active" className="space-y-4">
-                {activeJobs.map((job) => (
-                  <JobCard
-                    key={job.id}
-                    title={job.title}
-                    description={job.description}
-                    location={job.location}
-                    date={job.date}
-                    time={job.time}
-                    duration={job.duration}
-
-                    budget={job.budget}
-                    status={job.status}
-                    requester={job.requester}
-                    variant="worker"
-                    onView={() => { }}
-                  />
-                ))}
+              <TabsContent value="my-jobs">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {completedJobs.length === 0 ? (
+                    <p className="text-center col-span-full py-8 text-muted-foreground">No jobs assigned or completed yet.</p>
+                  ) : (
+                    completedJobs.map((job) => (
+                      <JobCard
+                        key={job.id}
+                        title={job.title}
+                        description={job.description}
+                        location={job.location}
+                        date={job.date}
+                        time={job.time}
+                        duration={job.duration}
+                        budget={job.budget}
+                        status={job.status}
+                        requester={job.requester}
+                        variant="worker"
+                        onView={() => {
+                          setSelectedJobDetails(job);
+                          setIsDetailsOpen(true);
+                        }}
+                        onRate={() => {
+                          if (job.requester) {
+                            setSelectedJobForReview({
+                              id: job.id,
+                              requesterId: job.requester.id,
+                              requesterName: job.requester.name
+                            });
+                            setIsReviewOpen(true);
+                          }
+                        }}
+                        onMessage={() => {
+                          if (job.requester) {
+                            navigate(`/worker/messages?userId=${job.requester.id}&userName=${encodeURIComponent(job.requester.name)}`);
+                          }
+                        }}
+                      />
+                    ))
+                  )}
+                </div>
               </TabsContent>
 
-              <TabsContent value="completed">
-                <div className="text-center py-12 text-muted-foreground">
-                  View all 127 completed jobs
+              <TabsContent value="reviews">
+                <div className="space-y-4">
+                  {/* Recent Reviews (Full List in Tab) */}
+                  {reviews.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No reviews yet.</p>
+                  ) : (
+                    reviews.map((review, index) => (
+                      <div key={index} className="space-y-1 border p-3 rounded-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{review.reviewer?.fullName || 'Anonymous'}</span>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-warning text-warning" />
+                            <span className="text-sm">{review.rating}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{review.comment}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
@@ -266,7 +336,7 @@ export default function WorkerDashboard() {
               </CardContent>
             </Card>
 
-            {/* Recent Reviews */}
+            {/* Sidebar Recent Reviews Snippet */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -275,23 +345,25 @@ export default function WorkerDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {recentReviews.map((review, index) => (
+                {reviews.slice(0, 3).map((review, index) => (
                   <div key={index} className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{review.requester}</span>
+                      <span className="text-sm font-medium">{review.reviewer?.fullName || 'Anonymous'}</span>
                       <div className="flex items-center gap-1">
                         <Star className="h-3 w-3 fill-warning text-warning" />
                         <span className="text-sm">{review.rating}</span>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">{review.comment}</p>
+                    <p className="text-xs text-muted-foreground truncate">{review.comment}</p>
                   </div>
                 ))}
+                {reviews.length === 0 && <p className="text-sm text-muted-foreground">No reviews yet.</p>}
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
       {selectedJobForBid && (
         <BidDialog
           isOpen={isBidDialogOpen}
@@ -300,6 +372,24 @@ export default function WorkerDashboard() {
           jobTitle={selectedJobForBid.title}
         />
       )}
-    </DashboardLayout>
+      {selectedJobForReview && (
+        <ReviewModal
+          isOpen={isReviewOpen}
+          onClose={() => setIsReviewOpen(false)}
+          onSubmit={handleRateRequester}
+          userName={selectedJobForReview.requesterName}
+        />
+      )}
+      {
+        selectedJobDetails && (
+          <JobDetailsModal
+            isOpen={isDetailsOpen}
+            onClose={() => setIsDetailsOpen(false)}
+            job={selectedJobDetails}
+            viewerRole="worker"
+          />
+        )
+      }
+    </DashboardLayout >
   );
 }

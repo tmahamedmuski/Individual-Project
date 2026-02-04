@@ -75,6 +75,14 @@ const userSchema = mongoose.Schema(
             ref: 'User',
             default: null
         },
+        averageRating: {
+            type: Number,
+            default: 0,
+        },
+        reviewCount: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,

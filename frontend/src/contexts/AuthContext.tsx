@@ -9,6 +9,8 @@ interface User {
     role: string;
     accountStatus: string;
     isApproved: boolean;
+    averageRating?: number;
+    reviewCount?: number;
 }
 
 interface AuthContextType {
@@ -69,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (userData.nicPhoto instanceof File || (userData.workingPhotos && userData.workingPhotos.length > 0) || (userData.gpLetters && userData.gpLetters.length > 0)) {
                 // Create FormData for file upload
                 const formData = new FormData();
-                
+
                 // Append all form fields
                 formData.append('fullName', userData.fullName);
                 formData.append('email', userData.email);
@@ -78,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 formData.append('phone', userData.phone);
                 formData.append('nic', userData.nic);
                 formData.append('address', userData.address || '');
-                
+
                 // Append location as JSON string
                 if (userData.location) {
                     formData.append('location', JSON.stringify({
@@ -87,31 +89,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         address: userData.location.address
                     }));
                 }
-                
+
                 // Append skills as JSON string
                 if (userData.skills && Array.isArray(userData.skills)) {
                     formData.append('skills', JSON.stringify(userData.skills));
                 }
-                
+
                 // Append NIC photo
                 if (userData.nicPhoto instanceof File) {
                     formData.append('nicPhoto', userData.nicPhoto);
                 }
-                
+
                 // Append working photos (for workers)
                 if (userData.workingPhotos && Array.isArray(userData.workingPhotos)) {
                     userData.workingPhotos.forEach((file: File) => {
                         formData.append('workingPhotos', file);
                     });
                 }
-                
+
                 // Append GP letters (for workers)
                 if (userData.gpLetters && Array.isArray(userData.gpLetters)) {
                     userData.gpLetters.forEach((file: File) => {
                         formData.append('gpLetters', file);
                     });
                 }
-                
+
                 // Send with multipart/form-data header
                 const response = await api.post('/auth/register', formData, {
                     headers: {

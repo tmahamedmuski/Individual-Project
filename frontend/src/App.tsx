@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient();
 
@@ -53,10 +54,12 @@ const App = () => (
                 <Route path="/requester/create-request" element={<CreateRequest />} />
                 <Route path="/requester/edit-request/:id" element={<EditRequest />} />
                 <Route path="/requester/requests" element={<MyRequests />} />
+                <Route path="/requester/messages" element={<Messages />} />
                 <Route path="/requester/*" element={<RequesterDashboard />} />
               </Route>
 
               <Route element={<ProtectedRoute requiredRole="worker" />}>
+                <Route path="/worker/messages" element={<Messages />} />
                 <Route path="/worker/*" element={<WorkerDashboard />} />
               </Route>
 
@@ -64,7 +67,7 @@ const App = () => (
                 <Route path="/broker/create-request" element={<CreateRequest />} />
                 <Route path="/broker/edit-request/:id" element={<EditRequest />} />
                 <Route path="/broker/requests" element={<MyRequests />} />
-                <Route path="/broker/requests" element={<MyRequests />} />
+                <Route path="/broker/messages" element={<Messages />} />
 
                 <Route path="/broker/*" element={<BrokerDashboard />} />
               </Route>

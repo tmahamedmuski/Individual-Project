@@ -51,9 +51,12 @@ import { getImageUrl } from "@/lib/imageUtils";
 
 
 
+import { reviewService } from "@/api/reviewService";
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [deletionRequests, setDeletionRequests] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isUserDetailOpen, setIsUserDetailOpen] = useState(false);
@@ -86,9 +89,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchReviews = async () => {
+    try {
+      const data = await reviewService.getAllReviews();
+      setReviews(data);
+    } catch (error) {
+      console.error("Error fetching reviews", error);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchDeletionRequests();
+    fetchReviews();
   }, []);
 
   const updateUserStatus = async (id: string, status: 'approved' | 'rejected' | 'pending') => {
@@ -236,6 +249,7 @@ export default function AdminDashboard() {
                   Account Deletion Requests
                   <Badge variant="destructive" className="ml-2">{pendingDeletionRequests.length}</Badge>
                 </TabsTrigger>
+                <TabsTrigger value="reviews">All Reviews</TabsTrigger>
               </TabsList>
 
               <TabsContent value="verification" className="space-y-4">
@@ -321,6 +335,7 @@ export default function AdminDashboard() {
                           <TableHead>Role</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Address</TableHead>
+                          <TableHead>Avg. Rating</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -348,6 +363,16 @@ export default function AdminDashboard() {
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm max-w-xs truncate">
                               {user.location?.address || 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              {user.averageRating ? (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium">{user.averageRating.toFixed(1)}</span>
+                                  <span className="text-xs text-muted-foreground">({user.reviewCount})</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">N/A</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
@@ -453,6 +478,72 @@ export default function AdminDashboard() {
                                     {request.reviewedBy ? `Reviewed by ${request.reviewedBy?.fullName}` : 'Processed'}
                                   </span>
                                 )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="reviews" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Reviews</CardTitle>
+                    <CardDescription>
+                      View all ratings and reviews across the platform
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Reviewer</TableHead>
+                          <TableHead>Reviewee</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Rating</TableHead>
+                          <TableHead>Comment</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reviews.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              No reviews found
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          reviews.map((review: any) => (
+                            <TableRow key={review._id}>
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{review.reviewer?.fullName || 'Unknown'}</span>
+                                  <span className="text-xs text-muted-foreground capitalize">{review.reviewer?.role}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{review.reviewee?.fullName || 'Unknown'}</span>
+                                  {/* <span className="text-xs text-muted-foreground capitalize">{review.reviewee?.role}</span> */}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm">{review.serviceRequest?.serviceType || 'Service'}</span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-bold">{review.rating}</span>
+                                  <span className="text-muted-foreground">/5</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <p className="text-sm max-w-xs truncate" title={review.comment}>{review.comment}</p>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {new Date(review.createdAt).toLocaleDateString()}
                               </TableCell>
                             </TableRow>
                           ))

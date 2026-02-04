@@ -140,6 +140,21 @@ const deleteRequest = async (req, res) => {
     }
 };
 
+// @desc    Get requests assigned to worker
+// @route   GET /api/services/worker/my
+// @access  Private
+const getWorkerJobs = async (req, res) => {
+    try {
+        const requests = await ServiceRequest.find({ worker: req.user.id })
+            .populate('requester', 'fullName email phone averageRating reviewCount')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(requests);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createRequest,
     getMyRequests,
@@ -147,5 +162,7 @@ module.exports = {
     getAvailableRequests,
     getRequest,
     updateRequest,
+    updateRequest,
     deleteRequest,
+    getWorkerJobs,
 };

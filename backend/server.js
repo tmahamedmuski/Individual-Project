@@ -21,6 +21,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/services', require('./routes/serviceRoutes'));
 app.use('/api/bids', require('./routes/bidRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 
 // Error handler (basic)
