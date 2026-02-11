@@ -7,8 +7,8 @@ const User = require('../models/User');
 const createRequest = async (req, res) => {
     const { serviceType, description, location, date, time, phoneNumber, budget } = req.body;
 
-    if (!serviceType || !description || !location || !date || !time || !phoneNumber || !budget) {
-        return res.status(400).json({ message: 'Please add all fields' });
+    if (!serviceType || !description || !location || !date || !time || !phoneNumber) {
+        return res.status(400).json({ message: 'Please add all required fields' });
     }
 
     try {
@@ -19,7 +19,7 @@ const createRequest = async (req, res) => {
             date,
             time,
             phoneNumber,
-            budget,
+            budget: budget != null && budget !== '' ? Number(budget) : undefined,
             requester: req.user.id,
         });
 
@@ -56,12 +56,15 @@ const getWorkers = async (req, res) => {
     }
 };
 
-// @desc    Get available requests for workers
+// @desc    Get all available (pending) requests - used by workers and brokers to view open jobs from other requesters (excludes own requests)
 // @route   GET /api/services/available
-// @access  Private
+// @access  Private (worker, broker, or requester)
 const getAvailableRequests = async (req, res) => {
     try {
-        const requests = await ServiceRequest.find({ status: 'pending' })
+        const requests = await ServiceRequest.find({
+            status: 'pending',
+            requester: { $ne: req.user.id },
+        })
             .populate('requester', 'fullName email phone')
             .sort({ createdAt: -1 });
 
@@ -155,6 +158,23 @@ const getWorkerJobs = async (req, res) => {
     }
 };
 
+// @desc    Get jobs assigned to broker's managed workers (Broker view of "work")
+// @route   GET /api/services/broker/managed-jobs
+// @access  Private (Broker)
+const getBrokerManagedJobs = async (req, res) => {
+    try {
+        const managedUserIds = await User.find({ addedBy: req.user.id }).distinct('_id');
+        const requests = await ServiceRequest.find({ worker: { $in: managedUserIds } })
+            .populate('requester', 'fullName email phone averageRating reviewCount')
+            .populate('worker', 'fullName email phone rating')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(requests);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createRequest,
     getMyRequests,
@@ -165,4 +185,5 @@ module.exports = {
     updateRequest,
     deleteRequest,
     getWorkerJobs,
+    getBrokerManagedJobs,
 };

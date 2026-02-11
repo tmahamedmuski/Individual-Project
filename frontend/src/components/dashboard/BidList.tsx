@@ -8,7 +8,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, Phone } from "lucide-react";
+import { Star, Phone, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 
@@ -32,10 +32,11 @@ interface BidListProps {
     onClose: () => void;
     jobId: string;
     jobTitle: string;
-    onAcceptBid?: (bidId: string, workerId: string) => void;
+    onAcceptBid?: (bidId: string, workerId: string, workerName: string) => void;
+    onMessage?: (workerId: string, workerName: string) => void;
 }
 
-export function BidList({ isOpen, onClose, jobId, jobTitle, onAcceptBid }: BidListProps) {
+export function BidList({ isOpen, onClose, jobId, jobTitle, onAcceptBid, onMessage }: BidListProps) {
     const [bids, setBids] = useState<Bid[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -92,7 +93,7 @@ export function BidList({ isOpen, onClose, jobId, jobTitle, onAcceptBid }: BidLi
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col items-end gap-2">
+                                    <div className="flex flex-col items-end gap-2">
                                     <div className="text-lg font-bold text-green-600">
                                         Rs. {bid.amount}
                                     </div>
@@ -100,8 +101,14 @@ export function BidList({ isOpen, onClose, jobId, jobTitle, onAcceptBid }: BidLi
                                         <span className="text-xs text-muted-foreground">
                                             {new Date(bid.createdAt).toLocaleDateString()}
                                         </span>
+                                        {onMessage && (
+                                            <Button size="sm" variant="outline" onClick={() => { onClose(); onMessage(bid.worker._id, bid.worker.fullName); }}>
+                                                <MessageSquare className="h-3 w-3 mr-1" />
+                                                Message
+                                            </Button>
+                                        )}
                                         {onAcceptBid && bid.status === 'pending' && (
-                                            <Button size="sm" onClick={() => onAcceptBid(bid._id, bid.worker._id)}>
+                                            <Button size="sm" onClick={() => onAcceptBid(bid._id, bid.worker._id, bid.worker.fullName)}>
                                                 Accept
                                             </Button>
                                         )}

@@ -46,10 +46,10 @@ export const requesterNavItems: NavItem[] = [
 
 export const brokerNavItems: NavItem[] = [
     { label: "Dashboard", href: "/broker", icon: Home },
-    { label: "My Requests", href: "/broker/requests", icon: Briefcase },
-    { label: "Marketplace", href: "/broker/marketplace", icon: Search },
-    { label: "My Workers", href: "/broker/workers", icon: Users },
-    { label: "Job Applications", href: "/broker/jobs", icon: Briefcase, badge: 8 },
+    { label: "My Requests (Works)", href: "/broker/requests", icon: Briefcase },
+    { label: "All Available Jobs", href: "/broker?tab=marketplace", icon: Search },
+    { label: "My Workers' Jobs", href: "/broker?tab=workers-jobs", icon: Briefcase },
+    { label: "My Workers", href: "/broker?tab=overview", icon: Users },
     { label: "Messages", href: "/broker/messages", icon: MessageSquare },
     { label: "Settings", href: "/settings", icon: Settings },
 ];

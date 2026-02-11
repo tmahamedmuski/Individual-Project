@@ -38,11 +38,12 @@ import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { JobCard } from "@/components/dashboard/JobCard";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 
 
 import { BidDialog } from "@/components/dashboard/BidDialog";
+import { BidList } from "@/components/dashboard/BidList";
 
 const pendingApplications = [
   {
@@ -67,12 +68,19 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { reviewService } from "@/api/reviewService";
 
+const BROKER_TABS = ["overview", "requests", "marketplace", "workers-jobs"] as const;
+
 export default function BrokerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab = BROKER_TABS.includes(tabFromUrl as any) ? tabFromUrl : "overview";
+
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
+  const [managedWorkersJobs, setManagedWorkersJobs] = useState<any[]>([]);
   const [managedWorkers, setManagedWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
@@ -85,6 +93,10 @@ export default function BrokerDashboard() {
   // Review Modal State
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [selectedJobForReview, setSelectedJobForReview] = useState<{ id: string, workerId: string, workerName: string } | null>(null);
+
+  // Bid List State (for viewing/accepting bids on requests)
+  const [isBidListOpen, setIsBidListOpen] = useState(false);
+  const [selectedJobForBids, setSelectedJobForBids] = useState<{ id: string, title: string } | null>(null);
 
   const handleBid = (job: any) => {
     setSelectedJobForBid({ id: job.id, title: job.title });
@@ -198,6 +210,36 @@ export default function BrokerDashboard() {
     fetchAvailableJobs();
   }, []);
 
+  // Fetch jobs assigned to managed workers (Broker view of "work" - workers' jobs)
+  useEffect(() => {
+    const fetchManagedWorkersJobs = async () => {
+      try {
+        const { data } = await api.get('/services/broker/managed-jobs');
+        const formatted = data.map((job: any) => ({
+          id: job._id,
+          title: job.serviceType,
+          description: job.description,
+          location: job.location,
+          date: job.date,
+          time: job.time,
+          duration: "N/A",
+          budget: job.budget,
+          status: job.status,
+          requester: {
+            id: job.requester?._id,
+            name: job.requester?.fullName || "Unknown",
+            rating: job.requester?.averageRating || 0,
+          },
+          worker: job.worker ? { id: job.worker._id, name: job.worker.fullName, rating: job.worker.rating || 0 } : undefined,
+        }));
+        setManagedWorkersJobs(formatted);
+      } catch (error) {
+        console.error("Error fetching managed workers jobs:", error);
+      }
+    };
+    fetchManagedWorkersJobs();
+  }, []);
+
   return (
     <DashboardLayout
       navItems={brokerNavItems}
@@ -211,7 +253,7 @@ export default function BrokerDashboard() {
           <div>
             <h1 className="text-2xl font-bold">Broker Dashboard</h1>
             <p className="text-muted-foreground">
-              Manage workers, post requests, and find work
+              Same as Worker and Requester: view work (jobs) and works (requests). Manage workers, post requests, and find jobs.
             </p>
           </div>
           <div className="flex gap-2">
@@ -251,12 +293,17 @@ export default function BrokerDashboard() {
           />
         </div>
 
-        {/* Main Tabs */}
-        <Tabs defaultValue="overview" className="space-y-4">
+        {/* Main Tabs: Works (requester) + Work (worker views) */}
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setSearchParams(v === "overview" ? {} : { tab: v })}
+          className="space-y-4"
+        >
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="requests">My Requests</TabsTrigger>
-            <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
+            <TabsTrigger value="requests">My Requests (Works)</TabsTrigger>
+            <TabsTrigger value="marketplace">All Available Jobs</TabsTrigger>
+            <TabsTrigger value="workers-jobs">My Workers' Jobs (Work)</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -392,7 +439,7 @@ export default function BrokerDashboard() {
 
           <TabsContent value="requests" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">My Service Requests</h2>
+              <h2 className="text-lg font-semibold">My Requests (Works — same as Requester view)</h2>
               <Button onClick={() => navigate('/broker/create-request')}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Request
@@ -417,6 +464,10 @@ export default function BrokerDashboard() {
                     status={job.status}
                     worker={job.worker}
                     variant="requester"
+                    onViewBids={() => {
+                      setSelectedJobForBids({ id: job.id, title: job.title });
+                      setIsBidListOpen(true);
+                    }}
                     onView={() => {
                       setSelectedJobDetails(job);
                       setIsDetailsOpen(true);
@@ -475,6 +526,11 @@ export default function BrokerDashboard() {
                         });
                       }
                     }}
+                    onMessage={() => {
+                      if (job.worker) {
+                        navigate(`/broker/messages?userId=${job.worker.id || job.worker._id}&userName=${encodeURIComponent(job.worker.name)}`);
+                      }
+                    }}
                   />
                 ))
               )}
@@ -483,7 +539,7 @@ export default function BrokerDashboard() {
 
           <TabsContent value="marketplace" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Marketplace (Available Jobs)</h2>
+              <h2 className="text-lg font-semibold">All Available Jobs (Broker can view all open jobs)</h2>
               <Button variant="outline">
                 <Search className="h-4 w-4 mr-2" />
                 Filter
@@ -504,7 +560,7 @@ export default function BrokerDashboard() {
                     date={job.date}
                     time={job.time}
                     duration={job.duration}
-                    budget={job.budget} // JobCard might need budget prop update if not there
+                    budget={job.budget}
                     status={job.status}
                     requester={job.requester}
                     variant="worker"
@@ -518,6 +574,40 @@ export default function BrokerDashboard() {
               )}
             </div>
           </TabsContent>
+
+          <TabsContent value="workers-jobs" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">My Workers' Jobs (Work — jobs assigned to your workers)</h2>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {managedWorkersJobs.length === 0 ? (
+                <p className="text-muted-foreground col-span-full text-center py-8">
+                  No jobs assigned to your managed workers yet.
+                </p>
+              ) : (
+                managedWorkersJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    title={job.title}
+                    description={job.description}
+                    location={job.location}
+                    date={job.date}
+                    time={job.time}
+                    duration={job.duration}
+                    budget={job.budget}
+                    status={job.status}
+                    requester={job.requester}
+                    worker={job.worker}
+                    variant="worker"
+                    onView={() => {
+                      setSelectedJobDetails(job);
+                      setIsDetailsOpen(true);
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </TabsContent>
         </Tabs>
 
         <BidDialog
@@ -526,6 +616,43 @@ export default function BrokerDashboard() {
           jobId={selectedJobForBid?.id || ""}
           jobTitle={selectedJobForBid?.title || ""}
         />
+        {selectedJobForBids && (
+          <BidList
+            isOpen={isBidListOpen}
+            onClose={() => setIsBidListOpen(false)}
+            jobId={selectedJobForBids.id}
+            jobTitle={selectedJobForBids.title}
+            onMessage={(workerId, workerName) => {
+              navigate(`/broker/messages?userId=${workerId}&userName=${encodeURIComponent(workerName)}`);
+            }}
+            onAcceptBid={async (bidId, workerId, workerName) => {
+              if (window.confirm("Are you sure you want to accept this bid? This will assign the job to the worker.")) {
+                try {
+                  await api.put(`/bids/${bidId}/accept`);
+                  toast({ title: "Bid Accepted", description: "The worker has been assigned. You can message them now." });
+                  setIsBidListOpen(false);
+                  const { data } = await api.get('/services/my');
+                  const formatted = data.map((req: any) => ({
+                    id: req._id,
+                    title: req.serviceType,
+                    description: req.description,
+                    location: req.location,
+                    date: req.date,
+                    time: req.time,
+                    duration: "N/A",
+                    budget: req.budget,
+                    status: req.status,
+                    worker: req.worker ? { id: req.worker._id, name: req.worker.fullName, rating: req.worker.rating || 0 } : undefined,
+                  }));
+                  setMyRequests(formatted);
+                  navigate(`/broker/messages?userId=${workerId}&userName=${encodeURIComponent(workerName)}`);
+                } catch (error: any) {
+                  toast({ title: "Error", description: error.response?.data?.message || "Failed to accept bid.", variant: "destructive" });
+                }
+              }
+            }}
+          />
+        )}
         {selectedJobForReview && (
           <ReviewModal
             isOpen={isReviewOpen}

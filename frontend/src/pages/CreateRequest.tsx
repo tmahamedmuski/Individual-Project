@@ -68,7 +68,7 @@ export default function CreateRequest() {
         if (!formData.serviceType || !formData.description || !formData.location || !formData.date || !formData.time || !formData.phoneNumber) {
             toast({
                 title: "Missing Fields",
-                description: "Please fill in all fields.",
+                description: "Please fill in all required fields.",
                 variant: "destructive",
             });
             setIsLoading(false);
@@ -208,8 +208,6 @@ export default function CreateRequest() {
                                     onChange={handleChange}
                                 />
                             </div>
-
-
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">

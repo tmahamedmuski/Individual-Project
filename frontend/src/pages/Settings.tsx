@@ -379,7 +379,7 @@ const Settings = () => {
                                             minLength={6}
                                         />
                                     </div>
-                                    <Button type="submit" disabled={loading}>
+                                    <Button type="submit" disabled={loading}  className="bg-blue-600 text-white hover:bg-blue-900">
                                         {loading ? "Updating..." : "Update Password"}
                                     </Button>
                                 </form>

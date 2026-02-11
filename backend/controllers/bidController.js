@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Bid = require('../models/Bid');
 const ServiceRequest = require('../models/ServiceRequest');
+const Message = require('../models/Message');
 
 // @desc    Place a bid
 // @route   POST /api/bids
@@ -79,6 +80,16 @@ const acceptBid = asyncHandler(async (req, res) => {
     serviceRequest.status = 'in_progress';
     serviceRequest.budget = bid.amount; // Update budget to agreed amount
     await serviceRequest.save();
+
+    // Send automatic message to the accepted worker
+    const workerId = bid.worker._id || bid.worker;
+    const messageContent = `Your bid has been accepted. Please come to my place on ${serviceRequest.date} at ${serviceRequest.time} to complete the work.`;
+    await Message.create({
+        sender: req.user.id,
+        receiver: workerId,
+        content: messageContent,
+        serviceRequest: serviceRequest._id,
+    });
 
     // Reject other bids for this request (Optional)
     // await Bid.updateMany(

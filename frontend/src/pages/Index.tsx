@@ -36,7 +36,7 @@ const Index = () => {
     {
       title: "Broker/Manager",
       description:
-        "I manage workers and help them find jobs. Create accounts for workers and apply on their behalf.",
+        "Same as Worker and Requester: view work (jobs) and works (requests). Manage workers, post requests, and find jobs.",
       icon: Users,
       variant: "broker" as const,
       path: "/broker",

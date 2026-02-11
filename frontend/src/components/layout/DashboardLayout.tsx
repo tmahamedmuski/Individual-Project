@@ -102,11 +102,11 @@ export function DashboardLayout({
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
+          {navItems.map((item, index) => {
+            const isActive = location.pathname === item.href.split('?')[0];
             return (
               <Link
-                key={item.href}
+                key={`${item.label}-${index}`}
                 to={item.href}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",

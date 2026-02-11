@@ -113,7 +113,7 @@ export function JobCard({
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+      <div className="flex gap-2 mt-4 pt-4 border-t border-border" >
         {onView && (
           <Button variant="outline" size="sm" className="flex-1" onClick={onView}>
             View Details

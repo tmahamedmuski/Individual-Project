@@ -67,6 +67,17 @@ export default function MyRequests() {
         }
     };
 
+    const getMessagesPath = () => {
+        switch (user?.role) {
+            case 'broker':
+                return '/broker/messages';
+            case 'admin':
+                return '/requester/messages';
+            default:
+                return '/requester/messages';
+        }
+    };
+
     const handleRateWorker = async (rating: number, comment: string) => {
         if (!selectedJobForReview) return;
 
@@ -250,7 +261,7 @@ export default function MyRequests() {
                                                 }}
                                                 onMessage={() => {
                                                     if (job.worker) {
-                                                        navigate(`/requester/messages?userId=${job.worker.id}&userName=${encodeURIComponent(job.worker.name)}`);
+                                                        navigate(`${getMessagesPath()}?userId=${job.worker.id}&userName=${encodeURIComponent(job.worker.name)}`);
                                                     }
                                                 }}
                                             />
@@ -267,14 +278,17 @@ export default function MyRequests() {
                     onClose={() => setIsBidListOpen(false)}
                     jobId={selectedJobForBids.id}
                     jobTitle={selectedJobForBids.title}
-                    onAcceptBid={async (bidId, workerId) => {
+                    onMessage={(workerId, workerName) => {
+                        navigate(`${getMessagesPath()}?userId=${workerId}&userName=${encodeURIComponent(workerName)}`);
+                    }}
+                    onAcceptBid={async (bidId, workerId, workerName) => {
                         if (window.confirm("Are you sure you want to accept this bid? This will assign the job to the worker.")) {
                             try {
                                 await api.put(`/bids/${bidId}/accept`);
 
                                 toast({
                                     title: "Bid Accepted",
-                                    description: "The worker has been assigned to this request.",
+                                    description: "The worker has been assigned. You can message them now.",
                                 });
                                 setIsBidListOpen(false);
 
@@ -294,6 +308,8 @@ export default function MyRequests() {
                                 }));
                                 setMyRequests(formattedRequests);
 
+                                // Redirect to Messages with the worker so requester can send first message
+                                navigate(`${getMessagesPath()}?userId=${workerId}&userName=${encodeURIComponent(workerName)}`);
                             } catch (error: any) {
                                 console.error("Error accepting bid:", error);
                                 const errorMessage = error.response?.data?.message || "Failed to accept bid.";
