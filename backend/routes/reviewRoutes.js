@@ -17,7 +17,8 @@ const adminOnly = (req, res, next) => {
 };
 
 router.post('/', protect, createReview);
-router.get('/user/:userId', protect, getUserReviews);
+// Public: anyone can view a user's ratings/reviews
+router.get('/user/:userId', getUserReviews);
 router.get('/', protect, adminOnly, getAllReviews);
 
 module.exports = router;

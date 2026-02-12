@@ -192,8 +192,8 @@ export default function WorkerDashboard() {
           />
           <StatCard
             title="Your Rating"
-            value={myStats.rating.toFixed(1)}
-            subtitle={`${myStats.reviewCount} reviews`}
+            value={myStats.reviewCount ? `${myStats.rating.toFixed(1)}/5` : "—"}
+            subtitle={myStats.reviewCount ? `${myStats.reviewCount} reviews` : "No reviews yet"}
             icon={Star}
             variant="worker"
           />
@@ -302,7 +302,7 @@ export default function WorkerDashboard() {
                           <span className="text-sm font-medium">{review.reviewer?.fullName || 'Anonymous'}</span>
                           <div className="flex items-center gap-1">
                             <Star className="h-3 w-3 fill-warning text-warning" />
-                            <span className="text-sm">{review.rating}</span>
+                            <span className="text-sm">{review.rating}/5</span>
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground">{review.comment}</p>
@@ -351,7 +351,7 @@ export default function WorkerDashboard() {
                       <span className="text-sm font-medium">{review.reviewer?.fullName || 'Anonymous'}</span>
                       <div className="flex items-center gap-1">
                         <Star className="h-3 w-3 fill-warning text-warning" />
-                        <span className="text-sm">{review.rating}</span>
+                        <span className="text-sm">{review.rating}/5</span>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{review.comment}</p>

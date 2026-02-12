@@ -26,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 import api from "@/lib/axios";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { reviewService } from "@/api/reviewService";
 const mockJobs = [
   {
     id: 1,
@@ -104,6 +105,8 @@ export default function RequesterDashboard() {
   const { toast } = useToast();
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewStats, setReviewStats] = useState({ rating: 0, reviewCount: 0 });
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -136,6 +139,26 @@ export default function RequesterDashboard() {
 
     fetchRequests();
   }, [toast]);
+
+  // Fetch reviews about this requester (from workers who completed jobs)
+  useEffect(() => {
+    if (!user?._id) return;
+    const fetchReviews = async () => {
+      try {
+        const data = await reviewService.getUserReviews(user._id);
+        setReviews(data);
+        const count = data.length;
+        const sum = data.reduce((s: number, r: any) => s + (r.rating || 0), 0);
+        setReviewStats({
+          rating: count ? sum / count : 0,
+          reviewCount: count,
+        });
+      } catch (e) {
+        console.error("Error fetching reviews", e);
+      }
+    };
+    fetchReviews();
+  }, [user?._id]);
 
   return (
     <DashboardLayout
@@ -181,8 +204,9 @@ export default function RequesterDashboard() {
             variant="requester"
           />
           <StatCard
-            title="Avg. Rating Given"
-            value="4.6"
+            title="Your Rating"
+            value={reviewStats.reviewCount ? `${reviewStats.rating.toFixed(1)}/5` : "—"}
+            subtitle={reviewStats.reviewCount ? `${reviewStats.reviewCount} reviews` : "No reviews yet"}
             icon={Star}
             variant="requester"
           />
@@ -193,6 +217,7 @@ export default function RequesterDashboard() {
           <TabsList>
             <TabsTrigger value="requests">My Requests</TabsTrigger>
             <TabsTrigger value="workers">Nearby Workers</TabsTrigger>
+            <TabsTrigger value="reviews">My Reviews</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
@@ -252,6 +277,37 @@ export default function RequesterDashboard() {
                 />
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="reviews" className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              Reviews and ratings workers gave you after completing jobs. Average = (sum of all ratings) ÷ number of reviews (e.g. 5/5 and 3/5 → 4/5).
+            </p>
+            {reviewStats.reviewCount > 0 && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                <Star className="h-5 w-5 fill-warning text-warning" />
+                <span className="font-semibold">{reviewStats.rating.toFixed(1)}/5</span>
+                <span className="text-muted-foreground">({reviewStats.reviewCount} {reviewStats.reviewCount === 1 ? "review" : "reviews"})</span>
+              </div>
+            )}
+            {reviews.length === 0 ? (
+              <p className="text-muted-foreground">No reviews yet. Workers can rate you after completing a job.</p>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map((review: any, index: number) => (
+                  <div key={review._id || index} className="border p-3 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{review.reviewer?.fullName || "Worker"}</span>
+                      <span className="text-sm font-medium">{review.rating}/5</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{review.comment}</p>
+                    {review.serviceRequest?.serviceType && (
+                      <p className="text-xs text-muted-foreground mt-1">Job: {review.serviceRequest.serviceType}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

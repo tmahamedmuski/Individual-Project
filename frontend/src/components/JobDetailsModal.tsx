@@ -144,9 +144,9 @@ export function JobDetailsModal({
                                                 <div key={review._id} className="border p-3 rounded-md text-sm">
                                                     <div className="flex justify-between items-start mb-1">
                                                         <span className="font-medium">{review.reviewer?.fullName || "Anonymous"}</span>
-                                                        <div className="flex items-center">
-                                                            <span className="font-bold mr-1">{review.rating}</span>
+                                                        <div className="flex items-center gap-1">
                                                             <Star className="h-3 w-3 fill-warning text-warning" />
+                                                            <span className="font-bold">{review.rating}/5</span>
                                                         </div>
                                                     </div>
                                                     <p className="text-muted-foreground text-xs">{review.comment}</p>
