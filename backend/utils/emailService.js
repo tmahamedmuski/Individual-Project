@@ -19,7 +19,7 @@ const createTransporter = () => {
 const sendOTPEmail = async (email, otp) => {
     try {
         const transporter = createTransporter();
-        
+
         const mailOptions = {
             from: `"Smart Service Platform" <${process.env.SMTP_USER}>`,
             to: email,
@@ -53,7 +53,7 @@ const sendOTPEmail = async (email, otp) => {
 const sendRegistrationEmail = async (email, fullName) => {
     try {
         const transporter = createTransporter();
-        
+
         const mailOptions = {
             from: `"Smart Service Platform" <${process.env.SMTP_USER}>`,
             to: email,
@@ -92,9 +92,9 @@ const sendRegistrationEmail = async (email, fullName) => {
 const sendStatusUpdateEmail = async (email, fullName, status) => {
     try {
         const transporter = createTransporter();
-        
+
         let subject, title, message, bgColor, borderColor;
-        
+
         switch (status) {
             case 'approved':
                 subject = 'Account Approved - Welcome to Smart Service Platform!';
@@ -124,7 +124,7 @@ const sendStatusUpdateEmail = async (email, fullName, status) => {
                 bgColor = '#f3f4f6';
                 borderColor = '#6b7280';
         }
-        
+
         const mailOptions = {
             from: `"Smart Service Platform" <${process.env.SMTP_USER}>`,
             to: email,
@@ -138,7 +138,7 @@ const sendStatusUpdateEmail = async (email, fullName, status) => {
                     </div>
                     ${status === 'approved' ? `
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="${process.env.FRONTEND_URL || 'http://localhost:8080'}/login" 
+                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" 
                                style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
                                 Login to Your Account
                             </a>

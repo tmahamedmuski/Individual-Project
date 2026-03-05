@@ -12,6 +12,8 @@ const fs = require('fs');
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
+    console.log('[AuthController] Registration request received. Body keys:', Object.keys(req.body));
+    console.log('[AuthController] Payload:', { email: req.body.email, role: req.body.role, nic: req.body.nic });
     try {
         // Parse JSON fields from req.body (multer adds them as strings)
         let { fullName, email, password, role, phone, location, nic, skills, address } = req.body;
@@ -48,9 +50,23 @@ const registerUser = async (req, res) => {
         }
 
         // Handle file uploads
+        const { isCloudinaryConfigured } = require('../middleware/uploadMiddleware');
+
         let nicPhotoPath = null;
         let workingPhotosPaths = [];
         let gpLettersPaths = [];
+
+        // Helper to get formatted path or Base64 URI
+        const getFormattedPath = (file, folder) => {
+            if (isCloudinaryConfigured) return file.path;
+
+            // Fallback: Convert memory buffer to Base64 data URI
+            if (file.buffer) {
+                const b64 = file.buffer.toString('base64');
+                return `data:${file.mimetype};base64,${b64}`;
+            }
+            return null;
+        };
 
         // Debug: Log what we received
         console.log('Files received:', {
@@ -60,33 +76,30 @@ const registerUser = async (req, res) => {
             files: req.files
         });
 
-        // Get base URL for full URL construction
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-
         // Handle NIC photo (single file or from fields)
         if (req.file) {
-            nicPhotoPath = `${baseUrl}/uploads/nic-photos/${req.file.filename}`;
-            console.log('NIC photo saved (single):', nicPhotoPath);
+            nicPhotoPath = getFormattedPath(req.file, 'nic-photos');
+            console.log('NIC photo Path:', nicPhotoPath);
         } else if (req.files && req.files.nicPhoto && req.files.nicPhoto.length > 0) {
-            nicPhotoPath = `${baseUrl}/uploads/nic-photos/${req.files.nicPhoto[0].filename}`;
-            console.log('NIC photo saved (fields):', nicPhotoPath, 'File:', req.files.nicPhoto[0]);
+            nicPhotoPath = getFormattedPath(req.files.nicPhoto[0], 'nic-photos');
+            console.log('NIC photo Path:', nicPhotoPath);
         }
 
         // Handle working photos (for workers)
         if (req.files && req.files.workingPhotos && req.files.workingPhotos.length > 0) {
             workingPhotosPaths = req.files.workingPhotos.map(file => {
-                const photoUrl = `${baseUrl}/uploads/working-photos/${file.filename}`;
-                console.log('Working photo saved:', photoUrl, 'File:', file);
-                return photoUrl;
+                const p = getFormattedPath(file, 'working-photos');
+                console.log('Working photo Path:', p);
+                return p;
             });
         }
 
         // Handle GP letters (for workers)
         if (req.files && req.files.gpLetters && req.files.gpLetters.length > 0) {
             gpLettersPaths = req.files.gpLetters.map(file => {
-                const letterUrl = `${baseUrl}/uploads/gp-letters/${file.filename}`;
-                console.log('GP letter saved:', letterUrl, 'File:', file);
-                return letterUrl;
+                const p = getFormattedPath(file, 'gp-letters');
+                console.log('GP letter Path:', p);
+                return p;
             });
         }
 
@@ -114,10 +127,6 @@ const registerUser = async (req, res) => {
         });
 
         console.log('User created with ID:', user._id);
-        console.log('Saved NIC Photo:', user.nicPhoto);
-        console.log('Saved Working Photos:', user.workingPhotos);
-        console.log('Saved GP Letters:', user.gpLetters);
-        console.log('Added By:', user.addedBy);
 
         if (user) {
             // Send registration confirmation email
@@ -145,7 +154,8 @@ const registerUser = async (req, res) => {
             res.status(400).json({ message: 'Invalid user data' });
         }
     } catch (error) {
-        res.status(500).json({ message: error.message })
+        console.error('[AuthController] Registration Error:', error);
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -185,6 +195,7 @@ const loginUser = async (req, res) => {
                 fullName: user.fullName,
                 email: user.email,
                 role: user.role,
+                location: user.location,
                 token: generateToken(user._id),
             });
         } else {
@@ -207,6 +218,37 @@ const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
+};
+
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const { fullName, phone, location } = req.body;
+
+        if (fullName) user.fullName = fullName;
+        if (phone) user.phone = phone;
+        if (location) user.location = location;
+
+        const updatedUser = await user.save();
+        res.json({
+            _id: updatedUser._id,
+            fullName: updatedUser.fullName,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            phone: updatedUser.phone,
+            location: updatedUser.location,
+            accountStatus: updatedUser.accountStatus,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 // @desc    Update user password
@@ -299,32 +341,18 @@ const uploadNICPhoto = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Delete old NIC photo if exists
-        if (user.nicPhoto) {
-            // Handle both full URL and path formats
-            let oldPath = user.nicPhoto;
+        // For Cloudinary, we just use the path from the cloud
+        // For Local memory storage, we convert to Base64
+        const { isCloudinaryConfigured } = require('../middleware/uploadMiddleware');
+        let nicPhotoUrl;
 
-            // If it's a full URL, extract the path
-            if (oldPath.startsWith('http://') || oldPath.startsWith('https://')) {
-                oldPath = oldPath.replace(`${req.protocol}://${req.get('host')}/uploads/`, '');
-            } else if (oldPath.startsWith('/uploads/')) {
-                // If it's already a path, remove the leading /uploads/
-                oldPath = oldPath.replace('/uploads/', '');
-            }
-
-            const oldFilePath = path.join(__dirname, '../uploads', oldPath);
-            if (fs.existsSync(oldFilePath)) {
-                try {
-                    fs.unlinkSync(oldFilePath);
-                    console.log('Deleted old NIC photo:', oldFilePath);
-                } catch (err) {
-                    console.error('Error deleting old NIC photo:', err);
-                }
-            }
+        if (isCloudinaryConfigured) {
+            nicPhotoUrl = req.file.path;
+        } else {
+            const b64 = req.file.buffer.toString('base64');
+            nicPhotoUrl = `data:${req.file.mimetype};base64,${b64}`;
         }
 
-        // Save new NIC photo URL (full URL with protocol and host)
-        const nicPhotoUrl = `${req.protocol}://${req.get('host')}/uploads/nic-photos/${req.file.filename}`;
         user.nicPhoto = nicPhotoUrl;
         await user.save();
 
@@ -548,6 +576,68 @@ const resetPassword = async (req, res) => {
     }
 };
 
+// @desc    Upload profile picture
+// @route   POST /api/auth/profile-picture
+// @access  Private
+const uploadProfilePicture = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const { isCloudinaryConfigured } = require('../middleware/uploadMiddleware');
+        let profilePictureUrl;
+
+        if (isCloudinaryConfigured) {
+            profilePictureUrl = req.file.path;
+        } else {
+            const b64 = req.file.buffer.toString('base64');
+            profilePictureUrl = `data:${req.file.mimetype};base64,${b64}`;
+        }
+
+        user.profilePicture = profilePictureUrl;
+        await user.save();
+
+        res.json({
+            _id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            profilePicture: user.profilePicture,
+            message: 'Profile picture uploaded successfully',
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Delete profile picture
+// @route   DELETE /api/auth/profile-picture
+// @access  Private
+const deleteProfilePicture = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.profilePicture = null;
+        await user.save();
+
+        res.json({
+            _id: user._id,
+            profilePicture: null,
+            message: 'Profile picture deleted successfully',
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
     loginUser,
@@ -557,9 +647,12 @@ module.exports = {
     deleteAccount,
     uploadNICPhoto,
     deleteNICPhoto,
+    uploadProfilePicture,
+    deleteProfilePicture,
     forgotPassword,
     verifyOTP,
     resetPassword,
     getManagedUsers,
+    updateProfile,
 };
 

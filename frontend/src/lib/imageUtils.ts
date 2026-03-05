@@ -4,16 +4,21 @@
  */
 export const getImageUrl = (path: string | null | undefined): string => {
   if (!path) return '/placeholder-image.png';
-  
-  // If it's already a full URL (http/https), return as is
-  if (path.startsWith('http://') || path.startsWith('https://')) {
+
+  // If it's already a full URL or Base64 data URI, return as is
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
     return path;
   }
-  
-  // If it's a relative path, construct full URL
-  // Remove leading slash if present to avoid double slashes
+
+  // If it's a relative path starting with /uploads, it's a legacy local file
+  // construction: http://localhost:5000 + path
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `http://localhost:5000${cleanPath}`;
+  if (cleanPath.startsWith('/uploads/')) {
+    return `http://localhost:5000${cleanPath}`;
+  }
+
+  // Otherwise return as is or placeholder
+  return path;
 };
 
 /**
@@ -21,5 +26,5 @@ export const getImageUrl = (path: string | null | undefined): string => {
  */
 export const isFullUrl = (path: string | null | undefined): boolean => {
   if (!path) return false;
-  return path.startsWith('http://') || path.startsWith('https://');
+  return path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:');
 };

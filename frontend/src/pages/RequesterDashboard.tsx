@@ -27,6 +27,7 @@ import api from "@/lib/axios";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { reviewService } from "@/api/reviewService";
+import { JobDetailsModal } from "@/components/JobDetailsModal";
 const mockJobs = [
   {
     id: 1,
@@ -63,41 +64,6 @@ const mockJobs = [
   },
 ];
 
-const mockWorkers = [
-  {
-    id: 1,
-    name: "Ajith Bandara",
-    skills: ["Plumbing", "Pipe Fitting", "Water Heater"],
-    rating: 4.8,
-    reviewCount: 127,
-    location: "Colombo 07",
-    isVerified: true,
-    isAvailable: true,
-    distance: "2.3 km",
-  },
-  {
-    id: 2,
-    name: "Kumara Silva",
-    skills: ["Electrical", "Wiring", "AC Repair"],
-    rating: 4.9,
-    reviewCount: 89,
-    location: "Colombo 03",
-    isVerified: true,
-    isAvailable: true,
-    distance: "1.8 km",
-  },
-  {
-    id: 3,
-    name: "Nimal Perera",
-    skills: ["Gardening", "Landscaping", "Tree Trimming"],
-    rating: 4.7,
-    reviewCount: 56,
-    location: "Colombo 05",
-    isVerified: true,
-    isAvailable: false,
-    distance: "3.1 km",
-  },
-];
 
 export default function RequesterDashboard() {
   const { user } = useAuth();
@@ -107,6 +73,10 @@ export default function RequesterDashboard() {
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewStats, setReviewStats] = useState({ rating: 0, reviewCount: 0 });
+
+  // Job Details Modal State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -176,10 +146,16 @@ export default function RequesterDashboard() {
               Manage your service requests and find workers
             </p>
           </div>
-          <Button className="w-fit" onClick={() => navigate('/requester/create-request')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Post New Request
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="w-fit" onClick={() => navigate('/requester/workers')}>
+              <Users className="h-4 w-4 mr-2" />
+              Find Workers
+            </Button>
+            <Button className="w-fit" onClick={() => navigate('/requester/create-request')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Post New Request
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -216,7 +192,6 @@ export default function RequesterDashboard() {
         <Tabs defaultValue="requests" className="space-y-4">
           <TabsList>
             <TabsTrigger value="requests">My Requests</TabsTrigger>
-            <TabsTrigger value="workers">Nearby Workers</TabsTrigger>
             <TabsTrigger value="reviews">My Reviews</TabsTrigger>
           </TabsList>
 
@@ -242,42 +217,15 @@ export default function RequesterDashboard() {
                   status={job.status}
                   worker={job.worker}
                   variant="requester"
-                  onView={() => { }}
+                  onView={() => {
+                    setSelectedJobDetails(job);
+                    setIsDetailsOpen(true);
+                  }}
                 />
               ))}
             </div>
           </TabsContent>
 
-          <TabsContent value="workers" className="space-y-4">
-            <div className="flex gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search workers by skill..." className="pl-10" />
-              </div>
-              <Button variant="outline">
-                <MapPin className="h-4 w-4 mr-2" />
-                Near Me
-              </Button>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockWorkers.map((worker) => (
-                <WorkerCard
-                  key={worker.id}
-                  name={worker.name}
-                  skills={worker.skills}
-                  rating={worker.rating}
-                  reviewCount={worker.reviewCount}
-                  location={worker.location}
-                  isVerified={worker.isVerified}
-                  isAvailable={worker.isAvailable}
-                  distance={worker.distance}
-                  onViewProfile={() => { }}
-                  onSelect={() => { }}
-                />
-              ))}
-            </div>
-          </TabsContent>
 
           <TabsContent value="reviews" className="space-y-4">
             <p className="text-muted-foreground text-sm">
@@ -311,6 +259,14 @@ export default function RequesterDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      {selectedJobDetails && (
+        <JobDetailsModal
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          job={selectedJobDetails}
+          viewerRole="requester"
+        />
+      )}
     </DashboardLayout>
   );
 }

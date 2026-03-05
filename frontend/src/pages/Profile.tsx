@@ -4,14 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Users, 
-  Mail, 
-  Phone, 
-  IdCard, 
-  MapPin, 
-  Briefcase, 
-  ShieldCheck, 
+import {
+  Users,
+  Mail,
+  Phone,
+  IdCard,
+  MapPin,
+  Briefcase,
+  ShieldCheck,
   Calendar,
   FileText,
   Image as ImageIcon,
@@ -32,6 +32,12 @@ const Profile = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingProfile, setUploadingProfile] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    fullName: "",
+    phone: "",
+    address: "",
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -42,6 +48,11 @@ const Profile = () => {
     try {
       const { data } = await api.get('/auth/me');
       setUser(data);
+      setEditForm({
+        fullName: data.fullName || "",
+        phone: data.phone || "",
+        address: data.location?.address || "",
+      });
     } catch (error) {
       console.error('Error fetching user details:', error);
       toast({
@@ -51,6 +62,33 @@ const Profile = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    try {
+      const { data } = await api.put('/auth/profile', {
+        fullName: editForm.fullName,
+        phone: editForm.phone,
+        location: {
+          ...user.location,
+          address: editForm.address,
+          type: 'Point',
+          coordinates: user.location?.coordinates || [79.8612, 6.9271] // Default to Colombo if none
+        }
+      });
+      setUser(data);
+      setIsEditing(false);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update profile",
+        variant: "destructive"
+      });
     }
   };
 
@@ -235,9 +273,18 @@ const Profile = () => {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Basic Information */}
           <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Your basic account details</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Personal Information</CardTitle>
+                <CardDescription>Your basic account details</CardDescription>
+              </div>
+              <Button
+                variant={isEditing ? "default" : "outline"}
+                size="sm"
+                onClick={() => isEditing ? handleUpdateProfile() : setIsEditing(true)}
+              >
+                {isEditing ? 'Save Changes' : 'Edit Profile'}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -245,7 +292,16 @@ const Profile = () => {
                   <Users className="h-4 w-4" />
                   Full Name
                 </div>
-                <p className="text-sm text-muted-foreground">{user.fullName}</p>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editForm.fullName}
+                    onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                    className="w-full p-2 text-sm border rounded-md"
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">{user.fullName}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
@@ -259,7 +315,16 @@ const Profile = () => {
                   <Phone className="h-4 w-4" />
                   Phone
                 </div>
-                <p className="text-sm text-muted-foreground">{user.phone || 'N/A'}</p>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full p-2 text-sm border rounded-md"
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">{user.phone || 'N/A'}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
@@ -312,19 +377,37 @@ const Profile = () => {
           {/* Location */}
           {user.location?.address && (
             <Card>
-              <CardHeader>
-                <CardTitle>Location</CardTitle>
-                <CardDescription>Your registered address</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <MapPin className="h-4 w-4" />
-                  Address
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle>Location</CardTitle>
+                  <CardDescription>Your registered address</CardDescription>
                 </div>
-                <p className="text-sm text-muted-foreground">{user.location.address}</p>
-                {user.location.coordinates && (
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <MapPin className="h-4 w-4" />
+                    Address
+                  </div>
+                  {isEditing ? (
+                    <textarea
+                      value={editForm.address}
+                      onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                      className="w-full p-2 text-sm border rounded-md min-h-[80px]"
+                      placeholder="Enter your address..."
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{user.location?.address || "Address not set"}</p>
+                  )}
+                </div>
+                {user.location?.coordinates && (
                   <p className="text-xs text-muted-foreground font-mono">
                     Coordinates: {user.location.coordinates[1]?.toFixed(6)}, {user.location.coordinates[0]?.toFixed(6)}
+                  </p>
+                )}
+                {isEditing && (
+                  <p className="text-xs text-muted-foreground italic">
+                    * Note: Manual coordinate selection is coming soon. Using current coordinates for now.
                   </p>
                 )}
               </CardContent>
@@ -357,9 +440,9 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 <div className="border rounded-md p-2">
-                  <img 
-                    src={getImageUrl(user.nicPhoto)} 
-                    alt="NIC Photo" 
+                  <img
+                    src={getImageUrl(user.nicPhoto)}
+                    alt="NIC Photo"
                     className="max-w-full h-auto max-h-96 rounded-md object-contain"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = '/placeholder-image.png';

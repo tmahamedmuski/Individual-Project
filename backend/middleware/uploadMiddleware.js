@@ -1,127 +1,118 @@
 const multer = require('multer');
-const path = require('path');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
 
-// Create uploads directories if they don't exist
-const nicPhotosDir = path.join(__dirname, '../uploads/nic-photos');
-const workingPhotosDir = path.join(__dirname, '../uploads/working-photos');
-const gpLettersDir = path.join(__dirname, '../uploads/gp-letters');
+dotenv.config();
 
-[nicPhotosDir, workingPhotosDir, gpLettersDir].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-});
+// Configure Cloudinary
+const isCloudinaryConfigured = process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET &&
+    process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name';
 
-// Configure storage for NIC photos
-const nicPhotoStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, nicPhotosDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, 'nic-' + uniqueSuffix + ext);
-    }
-});
+if (isCloudinaryConfigured) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+    console.log('[UploadMiddleware] Cloudinary configured successfully.');
+} else {
+    console.warn('[UploadMiddleware] Cloudinary credentials missing or placeholder. Falling back to local storage.');
+}
 
-// Configure storage for working photos
-const workingPhotoStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, workingPhotosDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, 'working-' + uniqueSuffix + ext);
-    }
-});
+const createCloudinaryStorage = (folderName) => {
+    if (isCloudinaryConfigured) {
+        return new CloudinaryStorage({
+            cloudinary: cloudinary,
+            params: async (req, file) => {
+                const isPdf = file.mimetype === 'application/pdf';
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
 
-// Configure storage for GP letters
-const gpLetterStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, gpLettersDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, 'gp-' + uniqueSuffix + ext);
-    }
-});
-
-// File filter - only allow images
-const fileFilter = (req, file, cb) => {
-    // Accept images only
-    if (file.mimetype.startsWith('image/')) {
-        cb(null, true);
+                return {
+                    folder: `project-run/${folderName}`,
+                    public_id: `${file.fieldname}-${uniqueSuffix}`,
+                    format: isPdf ? 'pdf' : undefined,
+                    resource_type: isPdf ? 'raw' : 'image',
+                };
+            },
+        });
     } else {
-        cb(new Error('Only image files are allowed!'), false);
+        // Fallback to memory storage for Base64
+        console.log(`[UploadMiddleware] Using memoryStorage for ${folderName}`);
+        return multer.memoryStorage();
     }
 };
 
-// Configure multer for single NIC photo
+// Configure specific storages
+const nicPhotoStorage = createCloudinaryStorage('nic-photos');
+const workingPhotoStorage = createCloudinaryStorage('working-photos');
+const gpLetterStorage = createCloudinaryStorage('gp-letters');
+const profilePictureStorage = createCloudinaryStorage('profile-pictures');
+
+// File filter
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+        cb(null, true);
+    } else {
+        cb(new Error('Only image and PDF files are allowed!'), false);
+    }
+};
+
+// Multer instances
 const upload = multer({
     storage: nicPhotoStorage,
-    limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB limit
-    },
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: fileFilter
 });
 
-// Dynamic storage for registration (handles multiple file types based on field name)
-const registrationStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        let destDir = nicPhotosDir;
-        if (file.fieldname === 'nicPhoto') {
-            destDir = nicPhotosDir;
-        } else if (file.fieldname === 'workingPhotos') {
-            destDir = workingPhotosDir;
-        } else if (file.fieldname === 'gpLetters') {
-            destDir = gpLettersDir;
-        }
-        console.log(`[Multer] Saving ${file.fieldname} to: ${destDir}`);
-        cb(null, destDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        let prefix = 'nic-';
-        if (file.fieldname === 'workingPhotos') {
-            prefix = 'working-';
-        } else if (file.fieldname === 'gpLetters') {
-            prefix = 'gp-';
-        }
-        const filename = prefix + uniqueSuffix + ext;
-        console.log(`[Multer] Generated filename: ${filename} for field: ${file.fieldname}`);
-        cb(null, filename);
-    }
+const uploadProfilePicture = multer({
+    storage: profilePictureStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: fileFilter
 });
 
-// Configure multer for multiple files during registration
+// Dynamic registration upload
+// Dynamic registration upload
+let registrationStorage;
+if (isCloudinaryConfigured) {
+    registrationStorage = new CloudinaryStorage({
+        cloudinary: cloudinary,
+        params: async (req, file) => {
+            console.log(`[Multer-Cloudinary] Processing file: ${file.fieldname}`);
+            try {
+                let folder = 'project-run/others';
+                if (file.fieldname === 'nicPhoto') folder = 'project-run/nic-photos';
+                else if (file.fieldname === 'workingPhotos') folder = 'project-run/working-photos';
+                else if (file.fieldname === 'gpLetters') folder = 'project-run/gp-letters';
+
+                const isPdf = file.mimetype === 'application/pdf';
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+
+                return {
+                    folder: folder,
+                    public_id: `${file.fieldname}-${uniqueSuffix}`,
+                    resource_type: isPdf ? 'raw' : 'image',
+                };
+            } catch (error) {
+                console.error('[Multer-Cloudinary] Error in params:', error);
+                throw error;
+            }
+        },
+    });
+} else {
+    // Fallback to memory storage for Base64
+    console.log('[UploadMiddleware] Using memoryStorage for registration');
+    registrationStorage = multer.memoryStorage();
+}
+
 const uploadRegistration = multer({
     storage: registrationStorage,
-    limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
-    },
-    fileFilter: (req, file, cb) => {
-        if (file.fieldname === 'nicPhoto' || file.fieldname === 'workingPhotos') {
-            // Only images for NIC and working photos
-            if (file.mimetype.startsWith('image/')) {
-                cb(null, true);
-            } else {
-                cb(new Error('Only image files are allowed!'), false);
-            }
-        } else if (file.fieldname === 'gpLetters') {
-            // Images or PDFs for GP letters
-            if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
-                cb(null, true);
-            } else {
-                cb(new Error('Only image and PDF files are allowed for GP letters!'), false);
-            }
-        } else {
-            cb(null, true);
-        }
-    }
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: fileFilter
 }).fields([
     { name: 'nicPhoto', maxCount: 1 },
     { name: 'workingPhotos', maxCount: 10 },
@@ -130,3 +121,6 @@ const uploadRegistration = multer({
 
 module.exports = upload;
 module.exports.uploadRegistration = uploadRegistration;
+module.exports.uploadProfilePicture = uploadProfilePicture;
+module.exports.cloudinary = cloudinary;
+module.exports.isCloudinaryConfigured = isCloudinaryConfigured;

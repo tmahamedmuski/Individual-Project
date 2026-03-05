@@ -31,7 +31,6 @@ export interface JobCardProps {
     onComplete?: () => void;
     onBid?: () => void;
     onViewBids?: () => void;
-    onViewBids?: () => void;
     onRate?: () => void;
     onMessage?: () => void;
     variant?: "requester" | "worker" | "broker";

@@ -11,6 +11,11 @@ interface User {
     isApproved: boolean;
     averageRating?: number;
     reviewCount?: number;
+    location?: {
+        type: string;
+        coordinates: number[];
+        address: string;
+    };
 }
 
 interface AuthContextType {

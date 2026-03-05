@@ -144,7 +144,7 @@ const Settings = () => {
             }
             // Remove any query parameters if present
             filename = filename.split('?')[0];
-            
+
             await api.delete(`/admin/worker/working-photos/${encodeURIComponent(filename)}`);
             toast({
                 title: "Success",
@@ -169,7 +169,7 @@ const Settings = () => {
             }
             // Remove any query parameters if present
             filename = filename.split('?')[0];
-            
+
             await api.delete(`/admin/worker/gp-letters/${encodeURIComponent(filename)}`);
             toast({
                 title: "Success",
@@ -379,7 +379,7 @@ const Settings = () => {
                                             minLength={6}
                                         />
                                     </div>
-                                    <Button type="submit" disabled={loading}  className="bg-blue-600 text-white hover:bg-blue-900">
+                                    <Button type="submit" disabled={loading} className="bg-blue-600 text-white hover:bg-blue-900">
                                         {loading ? "Updating..." : "Update Password"}
                                     </Button>
                                 </form>
@@ -471,7 +471,7 @@ const Settings = () => {
                                                     // Check if file is PDF by checking filename
                                                     const filename = letter.split('/').pop() || '';
                                                     const isPDF = filename.toLowerCase().endsWith('.pdf');
-                                                    
+
                                                     return (
                                                         <div key={idx} className="relative border rounded-md p-2">
                                                             {isPDF ? (
@@ -539,7 +539,7 @@ const Settings = () => {
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button variant="destructive" disabled={requestingDeletion || !deletionReason.trim()}>
-                                            <Trash2 className="mr-2 h-4 w-4" /> 
+                                            <Trash2 className="mr-2 h-4 w-4" />
                                             {requestingDeletion ? "Submitting..." : "Request Account Deletion"}
                                         </Button>
                                     </AlertDialogTrigger>

@@ -48,8 +48,37 @@ const getMyRequests = async (req, res) => {
 // @route   GET /api/services/workers
 // @access  Private
 const getWorkers = async (req, res) => {
+    const { lat, lng, maxDistance } = req.query;
+
     try {
-        const workers = await User.find({ role: 'worker' }).select('-password');
+        let workers;
+
+        if (lat && lng) {
+            // Use aggregation for geo-spatial search
+            workers = await User.aggregate([
+                {
+                    $geoNear: {
+                        near: {
+                            type: 'Point',
+                            coordinates: [parseFloat(lng), parseFloat(lat)],
+                        },
+                        distanceField: 'distance',
+                        maxDistance: maxDistance ? parseFloat(maxDistance) * 1000 : 50000, // default 50km if not specified
+                        spherical: true,
+                        query: { role: 'worker', accountStatus: 'approved' },
+                    },
+                },
+                {
+                    $project: {
+                        password: 0,
+                    },
+                },
+            ]);
+        } else {
+            // Fallback: Get all approved workers
+            workers = await User.find({ role: 'worker', accountStatus: 'approved' }).select('-password');
+        }
+
         res.status(200).json(workers);
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -47,8 +47,10 @@ export function JobCard({
     <div
       className={cn(
         "bg-card rounded-xl border border-border p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+        onView && "cursor-pointer",
         className
       )}
+      onClick={onView}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -113,8 +115,8 @@ export function JobCard({
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 mt-4 pt-4 border-t border-border" >
-        {onView && (
+      <div className="flex gap-2 mt-4 pt-4 border-t border-border" onClick={(e) => e.stopPropagation()}>
+        {onView && variant !== "requester" && (
           <Button variant="outline" size="sm" className="flex-1" onClick={onView}>
             View Details
           </Button>

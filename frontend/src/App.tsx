@@ -14,6 +14,7 @@ import CreateRequest from "./pages/CreateRequest";
 import EditRequest from "./pages/EditRequest";
 import MyRequests from "./pages/MyRequests";
 import RequesterDashboard from "./pages/RequesterDashboard";
+import FindWorkers from "./pages/FindWorkers";
 import WorkerDashboard from "./pages/WorkerDashboard";
 import BrokerDashboard from "./pages/BrokerDashboard";
 
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/requester/edit-request/:id" element={<EditRequest />} />
                 <Route path="/requester/requests" element={<MyRequests />} />
                 <Route path="/requester/messages" element={<Messages />} />
+                <Route path="/requester/workers" element={<FindWorkers />} />
                 <Route path="/requester/*" element={<RequesterDashboard />} />
               </Route>
 

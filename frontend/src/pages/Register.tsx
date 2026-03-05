@@ -265,7 +265,7 @@ const Register = () => {
         title: "Registration Successful",
         description: "Your account has been created. Please wait for admin approval.",
       });
-      navigate("/login");
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Registration Failed",
