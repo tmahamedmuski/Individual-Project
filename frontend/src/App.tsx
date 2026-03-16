@@ -19,6 +19,7 @@ import WorkerDashboard from "./pages/WorkerDashboard";
 import BrokerDashboard from "./pages/BrokerDashboard";
 
 import AdminDashboard from "./pages/AdminDashboard";
+import ActivityLogs from "./pages/ActivityLogs";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -75,6 +76,7 @@ const App = () => (
               </Route>
 
               <Route element={<ProtectedRoute requiredRole="admin" />}>
+                <Route path="/admin/logs" element={<ActivityLogs />} />
                 <Route path="/admin/*" element={<AdminDashboard />} />
               </Route>
 

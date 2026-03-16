@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const ServiceRequest = require('../models/ServiceRequest');
 const AccountDeletionRequest = require('../models/AccountDeletionRequest');
+const ActivityLog = require('../models/ActivityLog');
 const { protect } = require('../middleware/authMiddleware');
 const { uploadWorkingPhotos, uploadGPLetters } = require('../middleware/workerUploadMiddleware');
 const { sendStatusUpdateEmail } = require('../utils/emailService');
@@ -58,7 +59,7 @@ router.put('/users/:id/status', protect, adminOnly, async (req, res) => {
             user.accountStatus = status;
             // Maintain isApproved for any legacy checks if needed, or remove if confident
             user.isApproved = status === 'approved';
-            
+
             // Set rejection timestamp if rejected
             if (status === 'rejected') {
                 user.rejectionTimestamp = new Date();
@@ -77,12 +78,39 @@ router.put('/users/:id/status', protect, adminOnly, async (req, res) => {
                     console.error('Failed to send status update email:', emailError);
                     // Don't fail the status update if email fails
                 }
+
+                // Log Status Change
+                try {
+                    await ActivityLog.create({
+                        user: user._id,
+                        action: 'STATUS_CHANGE',
+                        description: `Admin changed user status from ${oldStatus} to ${status}`,
+                        metadata: { adminId: req.user.id, targetUserId: user._id, targetUserEmail: user.email }
+                    });
+                } catch (logError) {
+                    console.error('Failed to log status change:', logError);
+                }
             }
 
             res.json({ message: `User status updated to ${status}`, user });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Get system activity logs
+// @route   GET /api/admin/activity-logs
+// @access  Private/Admin
+router.get('/activity-logs', protect, adminOnly, async (req, res) => {
+    try {
+        const logs = await ActivityLog.find({})
+            .populate('user', 'fullName email role code')
+            .sort({ createdAt: -1 })
+            .limit(500); // Limit to last 500 for performance
+        res.json(logs);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -139,12 +167,12 @@ router.get('/deletion-requests', protect, adminOnly, async (req, res) => {
     try {
         const { status } = req.query;
         const query = status ? { status } : {};
-        
+
         const requests = await AccountDeletionRequest.find(query)
             .populate('user', 'fullName email role phone')
             .populate('reviewedBy', 'fullName email')
             .sort({ createdAt: -1 });
-        
+
         res.json(requests);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -158,7 +186,7 @@ router.put('/deletion-requests/:id/approve', protect, adminOnly, async (req, res
     try {
         const { adminNotes } = req.body;
         const request = await AccountDeletionRequest.findById(req.params.id).populate('user');
-        
+
         if (!request) {
             return res.status(404).json({ message: 'Deletion request not found' });
         }
@@ -180,9 +208,21 @@ router.put('/deletion-requests/:id/approve', protect, adminOnly, async (req, res
         // Delete all deletion requests for this user
         await AccountDeletionRequest.deleteMany({ user: request.user._id });
 
-        res.json({ 
+        // Log Admin Action
+        try {
+            await ActivityLog.create({
+                user: request.user._id,
+                action: 'ACCOUNT_DELETION',
+                description: `Admin approved account deletion request for user ${request.user.email}`,
+                metadata: { adminId: req.user.id, targetUserId: request.user._id }
+            });
+        } catch (logError) {
+            console.error('Failed to log admin action:', logError);
+        }
+
+        res.json({
             message: 'Account deletion request approved and user account deleted',
-            request 
+            request
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -196,7 +236,7 @@ router.put('/deletion-requests/:id/reject', protect, adminOnly, async (req, res)
     try {
         const { adminNotes } = req.body;
         const request = await AccountDeletionRequest.findById(req.params.id);
-        
+
         if (!request) {
             return res.status(404).json({ message: 'Deletion request not found' });
         }
@@ -211,9 +251,21 @@ router.put('/deletion-requests/:id/reject', protect, adminOnly, async (req, res)
         request.reviewedAt = new Date();
         await request.save();
 
-        res.json({ 
+        // Log Admin Action
+        try {
+            await ActivityLog.create({
+                user: request.user,
+                action: 'ADMIN_ACTION',
+                description: `Admin rejected account deletion request`,
+                metadata: { adminId: req.user.id, targetUserId: request.user }
+            });
+        } catch (logError) {
+            console.error('Failed to log admin action:', logError);
+        }
+
+        res.json({
             message: 'Account deletion request rejected',
-            request 
+            request
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -229,7 +281,19 @@ router.delete('/users/:id', protect, adminOnly, async (req, res) => {
         if (user) {
             // Delete any pending deletion requests
             await AccountDeletionRequest.deleteMany({ user: user._id });
-            
+
+            // Log Admin Action
+            try {
+                await ActivityLog.create({
+                    user: user._id,
+                    action: 'ACCOUNT_DELETION',
+                    description: `Admin manually deleted user account: ${user.email}`,
+                    metadata: { adminId: req.user.id, targetUserId: user._id }
+                });
+            } catch (logError) {
+                console.error('Failed to log admin action:', logError);
+            }
+
             await User.deleteOne({ _id: user._id });
             res.json({ message: 'User removed' });
         } else {
@@ -276,7 +340,7 @@ router.put('/users/:id', protect, adminOnly, async (req, res) => {
 router.post('/worker/working-photos', protect, uploadWorkingPhotos.array('photos', 10), async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        
+
         if (!user || user.role !== 'worker') {
             return res.status(403).json({ message: 'Only workers can upload working photos' });
         }
@@ -303,7 +367,7 @@ router.post('/worker/working-photos', protect, uploadWorkingPhotos.array('photos
 router.post('/worker/gp-letters', protect, uploadGPLetters.array('letters', 10), async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        
+
         if (!user || user.role !== 'worker') {
             return res.status(403).json({ message: 'Only workers can upload GP letters' });
         }
@@ -330,7 +394,7 @@ router.post('/worker/gp-letters', protect, uploadGPLetters.array('letters', 10),
 router.delete('/worker/working-photos/:filename', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        
+
         if (!user || user.role !== 'worker') {
             return res.status(403).json({ message: 'Only workers can delete working photos' });
         }
@@ -338,7 +402,7 @@ router.delete('/worker/working-photos/:filename', protect, async (req, res) => {
         const filename = req.params.filename;
         const fs = require('fs');
         const path = require('path');
-        
+
         // Find and remove the photo (handle both full URL and path formats)
         const photoToDelete = user.workingPhotos.find(photo => {
             if (photo.includes(filename)) {
@@ -355,7 +419,7 @@ router.delete('/worker/working-photos/:filename', protect, async (req, res) => {
             }
             const relativePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
             const fullFilePath = path.join(__dirname, '../uploads', relativePath);
-            
+
             // Delete file from filesystem
             if (fs.existsSync(fullFilePath)) {
                 try {
@@ -366,7 +430,7 @@ router.delete('/worker/working-photos/:filename', protect, async (req, res) => {
                 }
             }
         }
-        
+
         // Remove from user's workingPhotos array
         user.workingPhotos = user.workingPhotos.filter(photo => !photo.includes(filename));
         await user.save();
@@ -383,7 +447,7 @@ router.delete('/worker/working-photos/:filename', protect, async (req, res) => {
 router.delete('/worker/gp-letters/:filename', protect, async (req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        
+
         if (!user || user.role !== 'worker') {
             return res.status(403).json({ message: 'Only workers can delete GP letters' });
         }
@@ -391,7 +455,7 @@ router.delete('/worker/gp-letters/:filename', protect, async (req, res) => {
         const filename = req.params.filename;
         const fs = require('fs');
         const path = require('path');
-        
+
         // Find and remove the letter (handle both full URL and path formats)
         const letterToDelete = user.gpLetters.find(letter => {
             if (letter.includes(filename)) {
@@ -408,7 +472,7 @@ router.delete('/worker/gp-letters/:filename', protect, async (req, res) => {
             }
             const relativePath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
             const fullFilePath = path.join(__dirname, '../uploads', relativePath);
-            
+
             // Delete file from filesystem
             if (fs.existsSync(fullFilePath)) {
                 try {
@@ -419,7 +483,7 @@ router.delete('/worker/gp-letters/:filename', protect, async (req, res) => {
                 }
             }
         }
-        
+
         // Remove from user's gpLetters array
         user.gpLetters = user.gpLetters.filter(letter => !letter.includes(filename));
         await user.save();

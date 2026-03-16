@@ -6,7 +6,7 @@ const AccountDeletionRequest = require('../models/AccountDeletionRequest');
 const { sendOTPEmail, sendRegistrationEmail, sendStatusUpdateEmail } = require('../utils/emailService');
 const path = require('path');
 const fs = require('fs');
-
+const ActivityLog = require('../models/ActivityLog');
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -129,13 +129,24 @@ const registerUser = async (req, res) => {
         console.log('User created with ID:', user._id);
 
         if (user) {
-            // Send registration confirmation email
             try {
                 await sendRegistrationEmail(user.email, user.fullName);
                 console.log('Registration email sent to:', user.email);
             } catch (emailError) {
                 console.error('Failed to send registration email:', emailError);
                 // Don't fail registration if email fails
+            }
+
+            // Log Registration
+            try {
+                await ActivityLog.create({
+                    user: user._id,
+                    action: 'REGISTER',
+                    description: `New user registered: ${user.fullName}`,
+                    metadata: { role: user.role, email: user.email }
+                });
+            } catch (logError) {
+                console.error('Failed to create activity log:', logError);
             }
 
             res.status(201).json({
@@ -188,6 +199,18 @@ const loginUser = async (req, res) => {
                         ? 'Your account has been rejected. Contact admin.'
                         : 'Account pending admin approval'
                 });
+            }
+
+            // Log Login
+            try {
+                await ActivityLog.create({
+                    user: user._id,
+                    action: 'LOGIN',
+                    description: `User logged in`,
+                    metadata: { role: user.role, email: user.email }
+                });
+            } catch (logError) {
+                console.error('Failed to create activity log for login:', logError);
             }
 
             res.json({
@@ -316,6 +339,18 @@ const deleteAccount = async (req, res) => {
         if (user) {
             // Delete any pending deletion requests
             await AccountDeletionRequest.deleteMany({ user: user._id });
+
+            // Ensure we log before deleting so we have the ID and name
+            try {
+                await ActivityLog.create({
+                    user: null, // Since the user is being deleted, we set to null or keep ID as untracked
+                    action: 'ACCOUNT_DELETION',
+                    description: `User account deleted by user: ${user.fullName}`,
+                    metadata: { role: user.role, email: user.email, deletedUserId: user._id }
+                });
+            } catch (logError) {
+                console.error('Failed to log account deletion:', logError);
+            }
 
             await user.deleteOne();
             res.json({ message: 'Account deleted successfully' });
@@ -655,4 +690,3 @@ module.exports = {
     getManagedUsers,
     updateProfile,
 };
-
