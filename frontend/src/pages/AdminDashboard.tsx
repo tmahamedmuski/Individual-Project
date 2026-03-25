@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -62,6 +63,27 @@ export default function AdminDashboard() {
   const [isUserDetailOpen, setIsUserDetailOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const getTabFromPath = (pathname: string) => {
+    if (pathname.includes('/admin/users')) return 'users';
+    if (pathname.includes('/admin/disputes')) return 'disputes';
+    if (pathname.includes('/admin/reviews')) return 'reviews';
+    return 'verification';
+  };
+
+  const [activeTab, setActiveTab] = useState(getTabFromPath(location.pathname));
+
+  useEffect(() => {
+    setActiveTab(getTabFromPath(location.pathname));
+  }, [location.pathname]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === 'verification') navigate('/admin/verification');
+    else navigate(`/admin/${value}`);
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -238,7 +260,7 @@ export default function AdminDashboard() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
-            <Tabs defaultValue="verification" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
               <TabsList>
                 <TabsTrigger value="verification">
                   Verification
@@ -277,6 +299,7 @@ export default function AdminDashboard() {
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-9 w-9">
+                                    <AvatarImage src={user.profilePicture ? getImageUrl(user.profilePicture) : undefined} />
                                     <AvatarFallback className="bg-admin/10 text-admin">
                                       {user.fullName?.charAt(0)}
                                     </AvatarFallback>
@@ -345,6 +368,7 @@ export default function AdminDashboard() {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-9 w-9">
+                                  <AvatarImage src={user.profilePicture ? getImageUrl(user.profilePicture) : undefined} />
                                   <AvatarFallback>
                                     {user.fullName?.charAt(0)}
                                   </AvatarFallback>
@@ -424,6 +448,7 @@ export default function AdminDashboard() {
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-9 w-9">
+                                    <AvatarImage src={request.user?.profilePicture ? getImageUrl(request.user.profilePicture) : undefined} />
                                     <AvatarFallback>
                                       {request.user?.fullName?.charAt(0) || 'U'}
                                     </AvatarFallback>

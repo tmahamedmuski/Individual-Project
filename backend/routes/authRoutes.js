@@ -16,6 +16,8 @@ const {
     resetPassword,
     getManagedUsers,
     updateProfile,
+    getUserById,
+    getAllUsersPublic,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 const uploadMiddleware = require('../middleware/uploadMiddleware');
@@ -37,5 +39,7 @@ router.delete('/profile-picture', protect, deleteProfilePicture);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-otp', verifyOTP);
 router.post('/reset-password', resetPassword);
+router.get('/user/:id', protect, getUserById);
+router.get('/users', protect, getAllUsersPublic);
 
 module.exports = router;

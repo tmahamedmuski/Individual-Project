@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { getImageUrl } from "@/lib/imageUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +52,9 @@ export function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
+
+  const finalUserAvatar = userAvatar || (user?.profilePicture ? getImageUrl(user.profilePicture) : undefined);
 
   const roleColors = {
     requester: "bg-requester",
@@ -179,7 +184,7 @@ export function DashboardLayout({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 px-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={userAvatar} />
+                    <AvatarImage src={finalUserAvatar} />
                     <AvatarFallback className={roleColors[role]}>
                       {userName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>

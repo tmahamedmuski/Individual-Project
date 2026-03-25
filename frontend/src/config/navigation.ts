@@ -25,6 +25,7 @@ export const adminNavItems: NavItem[] = [
     { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle, badge: 0 },
     { label: "Users", href: "/admin/users", icon: Users },
     { label: "Activity Logs", href: "/admin/logs", icon: Activity },
+    { label: "Community", href: "/users", icon: Users },
     { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -33,6 +34,7 @@ export const workerNavItems: NavItem[] = [
     { label: "Job Requests", href: "/worker/jobs", icon: Briefcase, badge: 5 },
     { label: "My Profile", href: "/worker/profile", icon: User },
     { label: "Messages", href: "/worker/messages", icon: MessageSquare, badge: 3 },
+    { label: "Community", href: "/users", icon: Users },
     { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -41,6 +43,7 @@ export const requesterNavItems: NavItem[] = [
     { label: "My Requests", href: "/requester/requests", icon: Briefcase, badge: 3 },
     { label: "Find Workers", href: "/requester/workers", icon: Users },
     { label: "Messages", href: "/requester/messages", icon: MessageSquare, badge: 2 },
+    { label: "Community", href: "/users", icon: Users },
     { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -51,5 +54,6 @@ export const brokerNavItems: NavItem[] = [
     { label: "My Workers' Jobs", href: "/broker?tab=workers-jobs", icon: Briefcase },
     { label: "My Workers", href: "/broker?tab=overview", icon: Users },
     { label: "Messages", href: "/broker/messages", icon: MessageSquare },
+    { label: "Community", href: "/users", icon: Users },
     { label: "Settings", href: "/settings", icon: Settings },
 ];

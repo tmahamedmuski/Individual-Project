@@ -3,7 +3,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getImageUrl } from "@/lib/imageUtils";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -138,6 +139,7 @@ export default function BrokerDashboard() {
         const formattedWorkers = data.map((worker: any) => ({
           id: worker._id,
           name: worker.fullName,
+          profilePicture: worker.profilePicture,
           skills: worker.skills || [],
           status: worker.accountStatus,
           activeJobs: 0, // Placeholder
@@ -336,6 +338,7 @@ export default function BrokerDashboard() {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-9 w-9">
+                                  <AvatarImage src={worker.profilePicture ? getImageUrl(worker.profilePicture) : undefined} />
                                   <AvatarFallback className="bg-broker/10 text-broker">
                                     {worker.name.slice(0, 2).toUpperCase()}
                                   </AvatarFallback>

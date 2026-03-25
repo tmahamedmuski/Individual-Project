@@ -673,6 +673,33 @@ const deleteProfilePicture = async (req, res) => {
     }
 };
 
+// @desc    Get public user data by ID
+// @route   GET /api/auth/user/:id
+// @access  Private (Any authenticated user)
+const getUserById = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get all public users
+// @route   GET /api/auth/users
+// @access  Private (Any authenticated user)
+const getAllUsersPublic = async (req, res) => {
+    try {
+        const users = await User.find({}).select('fullName email role profilePicture accountStatus');
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
     loginUser,
@@ -689,4 +716,6 @@ module.exports = {
     resetPassword,
     getManagedUsers,
     updateProfile,
+    getUserById,
+    getAllUsersPublic,
 };

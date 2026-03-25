@@ -22,6 +22,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ActivityLogs from "./pages/ActivityLogs";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
+import AllUsers from "./pages/AllUsers";
 import NotFound from "./pages/NotFound";
 import Messages from "./pages/Messages";
 
@@ -50,6 +52,8 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/worker-profile/:id" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute><AllUsers /></ProtectedRoute>} />
 
               {/* Protected Routes */}
               <Route element={<ProtectedRoute requiredRole="requester" />}>
