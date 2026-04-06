@@ -108,7 +108,20 @@ export function DashboardLayout({
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item, index) => {
-            const isActive = location.pathname === item.href.split('?')[0];
+            const currentTab = new URLSearchParams(location.search).get("tab");
+            const itemPath = item.href.split('?')[0];
+            const itemSearch = item.href.split('?')[1] || "";
+            const itemTab = new URLSearchParams("?" + itemSearch).get("tab");
+            
+            let isActive = false;
+            if (location.pathname === itemPath) {
+              if (itemTab) {
+                isActive = currentTab === itemTab;
+              } else {
+                // If item has no tab, it is active only if the current URL has no tab
+                isActive = !currentTab;
+              }
+            }
             return (
               <Link
                 key={`${item.label}-${index}`}

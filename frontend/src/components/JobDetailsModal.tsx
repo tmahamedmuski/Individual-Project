@@ -83,7 +83,7 @@ export function JobDetailsModal({
                         </div>
 
                         {/* Job Metadata */}
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                             <div className="flex items-center gap-2">
                                 <MapPin className="h-4 w-4 text-muted-foreground" />
                                 <span>{job.location}</span>
@@ -101,6 +101,13 @@ export function JobDetailsModal({
                                 <span>{job.duration || "N/A"}</span>
                             </div>
                         </div>
+
+                        {job.partsRequired && (
+                            <div className="mb-4">
+                                <h4 className="text-sm font-semibold mb-1">Parts Required:</h4>
+                                <p className="text-sm text-muted-foreground">{job.partsRequired}</p>
+                            </div>
+                        )}
 
                         <Separator />
 

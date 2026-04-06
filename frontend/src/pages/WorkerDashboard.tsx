@@ -92,6 +92,7 @@ export default function WorkerDashboard() {
           time: job.time,
           duration: "N/A",
           budget: job.budget,
+          partsRequired: job.partsRequired,
           status: job.status,
           requester: {
             id: job.requester?._id,
@@ -113,6 +114,7 @@ export default function WorkerDashboard() {
           time: job.time,
           duration: "N/A",
           budget: job.budget,
+          partsRequired: job.partsRequired,
           status: job.status,
           requester: {
             id: job.requester?._id,

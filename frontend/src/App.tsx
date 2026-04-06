@@ -53,7 +53,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/worker-profile/:id" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
-              <Route path="/users" element={<ProtectedRoute><AllUsers /></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute requiredRole="admin"><AllUsers /></ProtectedRoute>} />
 
               {/* Protected Routes */}
               <Route element={<ProtectedRoute requiredRole="requester" />}>

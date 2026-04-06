@@ -16,6 +16,7 @@ export function JobCard({
 
   duration,
   budget,
+  partsRequired,
   status,
   requester,
   worker,
@@ -88,6 +89,14 @@ export function JobCard({
           </div>
         )}
       </div>
+
+      {/* Parts Required */}
+      {partsRequired && (
+        <div className="mb-4 py-2 px-3 bg-muted/30 rounded-md text-sm border">
+          <span className="font-semibold text-muted-foreground mr-1">Parts:</span>
+          {partsRequired}
+        </div>
+      )}
 
       {/* Person info */}
       {person && (

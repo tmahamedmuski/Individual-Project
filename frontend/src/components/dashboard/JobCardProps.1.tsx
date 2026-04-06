@@ -10,6 +10,7 @@ export interface JobCardProps {
 
     duration: string;
     budget?: number; // Optional as not all cards might have it yet, or make it required if guaranteed
+    partsRequired?: string;
     status: JobStatus;
     requester?: {
         name: string;

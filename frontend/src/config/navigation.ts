@@ -34,7 +34,6 @@ export const workerNavItems: NavItem[] = [
     { label: "Job Requests", href: "/worker/jobs", icon: Briefcase, badge: 5 },
     { label: "My Profile", href: "/worker/profile", icon: User },
     { label: "Messages", href: "/worker/messages", icon: MessageSquare, badge: 3 },
-    { label: "Community", href: "/users", icon: Users },
     { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -43,7 +42,6 @@ export const requesterNavItems: NavItem[] = [
     { label: "My Requests", href: "/requester/requests", icon: Briefcase, badge: 3 },
     { label: "Find Workers", href: "/requester/workers", icon: Users },
     { label: "Messages", href: "/requester/messages", icon: MessageSquare, badge: 2 },
-    { label: "Community", href: "/users", icon: Users },
     { label: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -52,8 +50,8 @@ export const brokerNavItems: NavItem[] = [
     { label: "My Requests (Works)", href: "/broker/requests", icon: Briefcase },
     { label: "All Available Jobs", href: "/broker?tab=marketplace", icon: Search },
     { label: "My Workers' Jobs", href: "/broker?tab=workers-jobs", icon: Briefcase },
+    { label: "All Platform Requests", href: "/broker?tab=all-platform-requests", icon: Activity },
     { label: "My Workers", href: "/broker?tab=overview", icon: Users },
     { label: "Messages", href: "/broker/messages", icon: MessageSquare },
-    { label: "Community", href: "/users", icon: Users },
     { label: "Settings", href: "/settings", icon: Settings },
 ];

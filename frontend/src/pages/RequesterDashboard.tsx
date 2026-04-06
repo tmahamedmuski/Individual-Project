@@ -91,6 +91,7 @@ export default function RequesterDashboard() {
           time: req.time,
           duration: "N/A",
           budget: req.budget,
+          partsRequired: req.partsRequired,
           status: req.status,
           worker: req.worker ? { name: req.worker.fullName, rating: req.worker.rating || 0 } : undefined,
         }));

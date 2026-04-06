@@ -69,7 +69,7 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { reviewService } from "@/api/reviewService";
 
-const BROKER_TABS = ["overview", "requests", "marketplace", "workers-jobs"] as const;
+const BROKER_TABS = ["overview", "requests", "marketplace", "workers-jobs", "all-platform-requests"] as const;
 
 export default function BrokerDashboard() {
   const { user } = useAuth();
@@ -82,6 +82,7 @@ export default function BrokerDashboard() {
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [availableJobs, setAvailableJobs] = useState<any[]>([]);
   const [managedWorkersJobs, setManagedWorkersJobs] = useState<any[]>([]);
+  const [allPlatformRequests, setAllPlatformRequests] = useState<any[]>([]);
   const [managedWorkers, setManagedWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
@@ -168,6 +169,7 @@ export default function BrokerDashboard() {
           time: req.time,
           duration: "N/A",
           budget: req.budget,
+          partsRequired: req.partsRequired,
           status: req.status,
           worker: req.worker ? { id: req.worker._id, name: req.worker.fullName, rating: req.worker.rating || 0 } : undefined,
         }));
@@ -194,6 +196,7 @@ export default function BrokerDashboard() {
           time: job.time,
           duration: "N/A",
           budget: job.budget,
+          partsRequired: job.partsRequired,
           status: job.status,
           requester: {
             name: job.requester?.fullName || "Unknown",
@@ -226,6 +229,7 @@ export default function BrokerDashboard() {
           time: job.time,
           duration: "N/A",
           budget: job.budget,
+          partsRequired: job.partsRequired,
           status: job.status,
           requester: {
             id: job.requester?._id,
@@ -240,6 +244,37 @@ export default function BrokerDashboard() {
       }
     };
     fetchManagedWorkersJobs();
+  }, []);
+
+  // Fetch all platform requests
+  useEffect(() => {
+    const fetchAllPlatformRequests = async () => {
+      try {
+        const { data } = await api.get('/services/broker/all-requests');
+        const formatted = data.map((job: any) => ({
+          id: job._id,
+          title: job.serviceType,
+          description: job.description,
+          location: job.location,
+          date: job.date,
+          time: job.time,
+          duration: "N/A",
+          budget: job.budget,
+          partsRequired: job.partsRequired,
+          status: job.status,
+          requester: {
+            id: job.requester?._id,
+            name: job.requester?.fullName || "Unknown",
+            rating: job.requester?.averageRating || 0,
+          },
+          worker: job.worker ? { id: job.worker._id, name: job.worker.fullName, rating: job.worker.rating || 0 } : undefined,
+        }));
+        setAllPlatformRequests(formatted);
+      } catch (error) {
+        console.error("Error fetching all platform requests:", error);
+      }
+    };
+    fetchAllPlatformRequests();
   }, []);
 
   return (
@@ -306,6 +341,7 @@ export default function BrokerDashboard() {
             <TabsTrigger value="requests">My Requests (Works)</TabsTrigger>
             <TabsTrigger value="marketplace">All Available Jobs</TabsTrigger>
             <TabsTrigger value="workers-jobs">My Workers' Jobs (Work)</TabsTrigger>
+            <TabsTrigger value="all-platform-requests">All Platform Requests</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -611,6 +647,43 @@ export default function BrokerDashboard() {
               )}
             </div>
           </TabsContent>
+          <TabsContent value="all-platform-requests" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">All Platform Requests (Global view of all jobs)</h2>
+              <Button variant="outline">
+                <Search className="h-4 w-4 mr-2" />
+                Filter
+              </Button>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allPlatformRequests.length === 0 ? (
+                <p className="text-muted-foreground col-span-full text-center py-8">
+                  No requests found on the platform.
+                </p>
+              ) : (
+                allPlatformRequests.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    title={job.title}
+                    description={job.description}
+                    location={job.location}
+                    date={job.date}
+                    time={job.time}
+                    duration={job.duration}
+                    budget={job.budget}
+                    status={job.status}
+                    requester={job.requester}
+                    worker={job.worker}
+                    variant="broker" // Custom variant logic or rely on view
+                    onView={() => {
+                      setSelectedJobDetails(job);
+                      setIsDetailsOpen(true);
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </TabsContent>
         </Tabs>
 
         <BidDialog
@@ -644,6 +717,7 @@ export default function BrokerDashboard() {
                     time: req.time,
                     duration: "N/A",
                     budget: req.budget,
+                    partsRequired: req.partsRequired,
                     status: req.status,
                     worker: req.worker ? { id: req.worker._id, name: req.worker.fullName, rating: req.worker.rating || 0 } : undefined,
                   }));

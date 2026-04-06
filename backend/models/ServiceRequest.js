@@ -10,6 +10,10 @@ const serviceRequestSchema = mongoose.Schema(
             type: String,
             required: [true, 'Please add a description'],
         },
+        partsRequired: {
+            type: String,
+            default: '',
+        },
         location: {
             type: String,
             required: [true, 'Please add a location'],

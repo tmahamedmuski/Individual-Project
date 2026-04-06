@@ -44,6 +44,7 @@ export default function EditRequest() {
         phoneNumber: "",
         budget: "",
         status: "",
+        partsRequired: "",
     });
 
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -96,6 +97,7 @@ export default function EditRequest() {
                     phoneNumber: data.phoneNumber || "",
                     budget: data.budget || "",
                     status: data.status,
+                    partsRequired: data.partsRequired || "",
                 });
             } catch (error) {
                 console.error("Error fetching request:", error);
@@ -240,6 +242,17 @@ export default function EditRequest() {
                                     value={formData.description}
                                     onChange={handleChange}
                                     rows={4}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="partsRequired">Parts Required (Optional)</Label>
+                                <Input
+                                    id="partsRequired"
+                                    name="partsRequired"
+                                    placeholder="List any parts or hardware needed..."
+                                    value={formData.partsRequired}
+                                    onChange={handleChange}
                                 />
                             </div>
 

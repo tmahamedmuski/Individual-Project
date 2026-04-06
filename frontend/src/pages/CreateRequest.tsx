@@ -40,6 +40,7 @@ export default function CreateRequest() {
         date: "",
         time: "",
         phoneNumber: user?.phone || "",
+        partsRequired: "",
     });
 
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
@@ -179,6 +180,17 @@ export default function CreateRequest() {
                                     value={formData.description}
                                     onChange={handleChange}
                                     rows={4}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="partsRequired">Parts Required (Optional)</Label>
+                                <Input
+                                    id="partsRequired"
+                                    name="partsRequired"
+                                    placeholder="List any parts or hardware needed..."
+                                    value={formData.partsRequired}
+                                    onChange={handleChange}
                                 />
                             </div>
 

@@ -5,7 +5,7 @@ const User = require('../models/User');
 // @route   POST /api/services
 // @access  Private
 const createRequest = async (req, res) => {
-    const { serviceType, description, location, date, time, phoneNumber, budget } = req.body;
+    const { serviceType, description, location, date, time, phoneNumber, budget, partsRequired } = req.body;
 
     if (!serviceType || !description || !location || !date || !time || !phoneNumber) {
         return res.status(400).json({ message: 'Please add all required fields' });
@@ -20,6 +20,7 @@ const createRequest = async (req, res) => {
             time,
             phoneNumber,
             budget: budget != null && budget !== '' ? Number(budget) : undefined,
+            partsRequired,
             requester: req.user.id,
         });
 
@@ -204,6 +205,22 @@ const getBrokerManagedJobs = async (req, res) => {
     }
 };
 
+// @desc    Get all requests across the platform
+// @route   GET /api/services/broker/all-requests
+// @access  Private (Broker)
+const getBrokerAllRequests = async (req, res) => {
+    try {
+        const requests = await ServiceRequest.find({})
+            .populate('requester', 'fullName email phone averageRating reviewCount')
+            .populate('worker', 'fullName email phone rating')
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(requests);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createRequest,
     getMyRequests,
@@ -211,8 +228,8 @@ module.exports = {
     getAvailableRequests,
     getRequest,
     updateRequest,
-    updateRequest,
     deleteRequest,
     getWorkerJobs,
     getBrokerManagedJobs,
+    getBrokerAllRequests,
 };
