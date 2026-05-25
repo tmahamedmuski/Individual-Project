@@ -66,6 +66,10 @@ const userSchema = mongoose.Schema(
             type: Date,
             default: null,
         },
+        skills: {
+            type: [String],
+            default: [],
+        },
         workingPhotos: {
             type: [String],
             default: [],

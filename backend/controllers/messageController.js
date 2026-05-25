@@ -62,9 +62,12 @@ const getConversations = asyncHandler(async (req, res) => {
     const conversationMap = new Map();
 
     messages.forEach(msg => {
+        if (!msg.sender || !msg.receiver) return;
         const otherUser = msg.sender._id.toString() === req.user.id
             ? msg.receiver
             : msg.sender;
+
+        if (!otherUser || !otherUser._id) return;
 
         if (!conversationMap.has(otherUser._id.toString())) {
             conversationMap.set(otherUser._id.toString(), {
@@ -91,8 +94,35 @@ const getConversations = asyncHandler(async (req, res) => {
     res.status(200).json(conversations);
 });
 
+// @desc    Get unread messages count
+// @route   GET /api/messages/unread/count
+// @access  Private
+const getUnreadCount = asyncHandler(async (req, res) => {
+    const count = await Message.countDocuments({
+        receiver: req.user.id,
+        read: false
+    });
+    res.status(200).json({ count });
+});
+
+// @desc    Mark messages from a user as read
+// @route   PUT /api/messages/:userId/read
+// @access  Private
+const markAsRead = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    await Message.updateMany(
+        { sender: userId, receiver: req.user.id, read: false },
+        { read: true }
+    );
+
+    res.status(200).json({ success: true });
+});
+
 module.exports = {
     sendMessage,
     getMessages,
-    getConversations
+    getConversations,
+    getUnreadCount,
+    markAsRead
 };

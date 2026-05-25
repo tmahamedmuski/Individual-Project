@@ -11,12 +11,16 @@ const {
     getWorkerJobs,
     getBrokerManagedJobs,
     getBrokerAllRequests,
+    getMyActiveRequestsCount,
+    getWorkerMatchedJobsCount,
 } = require('../controllers/serviceController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.route('/').post(protect, createRequest);
 router.route('/my').get(protect, getMyRequests);
+router.route('/my/active-count').get(protect, getMyActiveRequestsCount);
 router.route('/worker/my').get(protect, getWorkerJobs);
+router.route('/worker/matched-count').get(protect, getWorkerMatchedJobsCount);
 router.get('/broker/managed-jobs', protect, getBrokerManagedJobs);
 router.get('/broker/all-requests', protect, getBrokerAllRequests);
 router.route('/workers').get(protect, getWorkers);

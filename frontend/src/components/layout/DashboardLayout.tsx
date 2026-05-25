@@ -1,10 +1,11 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { getImageUrl } from "@/lib/imageUtils";
+import api from "@/lib/axios";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +54,44 @@ export function DashboardLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [jobRequestsCount, setJobRequestsCount] = useState<number>(0);
+  const [myRequestsCount, setMyRequestsCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const { data } = await api.get("/messages/unread/count");
+        setUnreadMessagesCount(data.count);
+      } catch (error) {
+        console.error("Error fetching unread count:", error);
+      }
+    };
+
+    const fetchCounts = async () => {
+      try {
+        if (role === "worker") {
+          const { data } = await api.get("/services/worker/matched-count");
+          setJobRequestsCount(data.count);
+        } else if (role === "requester") {
+          const { data } = await api.get("/services/my/active-count");
+          setMyRequestsCount(data.count);
+        }
+      } catch (error) {
+        console.error("Error fetching request counts:", error);
+      }
+    };
+
+    if (user) {
+      fetchUnreadCount();
+      fetchCounts();
+      const interval = setInterval(() => {
+        fetchUnreadCount();
+        fetchCounts();
+      }, 10000); // Poll every 10s
+      return () => clearInterval(interval);
+    }
+  }, [user, role]);
 
   const finalUserAvatar = userAvatar || (user?.profilePicture ? getImageUrl(user.profilePicture) : undefined);
 
@@ -122,6 +161,18 @@ export function DashboardLayout({
                 isActive = !currentTab;
               }
             }
+
+            let displayBadge = undefined;
+            if (item.label === "Messages") {
+              displayBadge = unreadMessagesCount > 0 ? unreadMessagesCount : undefined;
+            } else if (item.label === "Job Requests") {
+              displayBadge = jobRequestsCount > 0 ? jobRequestsCount : undefined;
+            } else if (item.label === "My Requests") {
+              displayBadge = myRequestsCount > 0 ? myRequestsCount : undefined;
+            } else {
+              displayBadge = item.badge && item.badge > 0 ? item.badge : undefined;
+            }
+
             return (
               <Link
                 key={`${item.label}-${index}`}
@@ -137,9 +188,9 @@ export function DashboardLayout({
                 {!sidebarCollapsed && (
                   <>
                     <span className="flex-1 font-medium text-sm">{item.label}</span>
-                    {item.badge && (
+                    {displayBadge !== undefined && (
                       <Badge variant="secondary" className="h-5 px-2 text-xs">
-                        {item.badge}
+                        {displayBadge}
                       </Badge>
                     )}
                   </>

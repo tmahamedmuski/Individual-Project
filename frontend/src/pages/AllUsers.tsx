@@ -44,7 +44,8 @@ const AllUsers = () => {
 
   const filteredUsers = users.filter(u => 
     u.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.skills && u.skills.some((skill: string) => skill.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   const getRoleColors = (role: string) => {
@@ -112,7 +113,14 @@ const AllUsers = () => {
                     <div className="text-left overflow-hidden flex-1">
                       <p className="text-sm font-semibold truncate">{u.fullName}</p>
                       <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                      <p className="text-[10px] font-medium uppercase mt-1 text-primary tracking-wider">{u.role}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        <p className="text-[10px] font-semibold uppercase text-primary tracking-wider">{u.role}</p>
+                        {u.skills && u.skills.map((skill: string, idx: number) => (
+                          <span key={idx} className="text-[9px] bg-secondary text-secondary-foreground font-medium px-1.5 py-0.5 rounded-full">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </Button>
                 ))}

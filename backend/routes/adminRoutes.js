@@ -317,6 +317,9 @@ router.put('/users/:id', protect, adminOnly, async (req, res) => {
             user.role = req.body.role || user.role;
             user.nic = req.body.nic || user.nic;
             user.phone = req.body.phone || user.phone;
+            if (req.body.skills !== undefined) {
+                user.skills = req.body.skills;
+            }
 
             const updatedUser = await user.save();
             res.json({
@@ -325,6 +328,7 @@ router.put('/users/:id', protect, adminOnly, async (req, res) => {
                 email: updatedUser.email,
                 role: updatedUser.role,
                 isAdmin: updatedUser.role === 'admin',
+                skills: updatedUser.skills,
             });
         } else {
             res.status(404).json({ message: 'User not found' });

@@ -12,6 +12,7 @@ interface User {
     isApproved: boolean;
     averageRating?: number;
     reviewCount?: number;
+    skills?: string[];
     location?: {
         type: string;
         coordinates: number[];

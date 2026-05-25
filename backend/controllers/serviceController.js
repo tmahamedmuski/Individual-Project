@@ -221,6 +221,62 @@ const getBrokerAllRequests = async (req, res) => {
     }
 };
 
+// @desc    Get count of requester's active requests
+// @route   GET /api/services/my/active-count
+// @access  Private (Requester)
+const getMyActiveRequestsCount = async (req, res) => {
+    try {
+        const count = await ServiceRequest.countDocuments({
+            requester: req.user.id,
+            status: { $in: ['pending', 'in_progress'] }
+        });
+        res.status(200).json({ count });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Get count of available jobs matching worker's skills
+// @route   GET /api/services/worker/matched-count
+// @access  Private (Worker)
+const getWorkerMatchedJobsCount = async (req, res) => {
+    try {
+        const worker = await User.findById(req.user.id);
+        if (!worker) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const workerSkills = worker.skills || [];
+        
+        const requests = await ServiceRequest.find({
+            status: 'pending',
+            requester: { $ne: req.user.id }
+        });
+
+        const matchedCount = requests.filter(job => {
+            if (workerSkills.length === 0) return false;
+            const normalize = (str) => str.toLowerCase().trim();
+            const normalizedServiceType = normalize(job.serviceType);
+
+            return workerSkills.some(skill => {
+                const normalizedSkill = normalize(skill);
+                if (normalizedSkill === normalizedServiceType) return true;
+                if (normalizedSkill.startsWith('plumb') && normalizedServiceType.startsWith('plumb')) return true;
+                if (normalizedSkill.startsWith('electr') && normalizedServiceType.startsWith('electr')) return true;
+                if (normalizedSkill.startsWith('clean') && normalizedServiceType.startsWith('clean')) return true;
+                if (normalizedSkill.startsWith('carpent') && normalizedServiceType.startsWith('carpent')) return true;
+                if (normalizedSkill.startsWith('garden') && normalizedServiceType.startsWith('garden')) return true;
+                if (normalizedSkill.startsWith('paint') && normalizedServiceType.startsWith('paint')) return true;
+                return normalizedSkill.includes(normalizedServiceType) || normalizedServiceType.includes(normalizedSkill);
+            });
+        }).length;
+
+        res.status(200).json({ count: matchedCount });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createRequest,
     getMyRequests,
@@ -232,4 +288,6 @@ module.exports = {
     getWorkerJobs,
     getBrokerManagedJobs,
     getBrokerAllRequests,
+    getMyActiveRequestsCount,
+    getWorkerMatchedJobsCount,
 };

@@ -31,17 +31,17 @@ export const adminNavItems: NavItem[] = [
 
 export const workerNavItems: NavItem[] = [
     { label: "Dashboard", href: "/worker", icon: Home },
-    { label: "Job Requests", href: "/worker/jobs", icon: Briefcase, badge: 5 },
+    { label: "Job Requests", href: "/worker/jobs", icon: Briefcase },
     { label: "My Profile", href: "/worker/profile", icon: User },
-    { label: "Messages", href: "/worker/messages", icon: MessageSquare, badge: 3 },
+    { label: "Messages", href: "/worker/messages", icon: MessageSquare },
     { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export const requesterNavItems: NavItem[] = [
     { label: "Dashboard", href: "/requester", icon: Home },
-    { label: "My Requests", href: "/requester/requests", icon: Briefcase, badge: 3 },
+    { label: "My Requests", href: "/requester/requests", icon: Briefcase },
     { label: "Find Workers", href: "/requester/workers", icon: Users },
-    { label: "Messages", href: "/requester/messages", icon: MessageSquare, badge: 2 },
+    { label: "Messages", href: "/requester/messages", icon: MessageSquare },
     { label: "Settings", href: "/settings", icon: Settings },
 ];
 

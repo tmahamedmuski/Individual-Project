@@ -31,6 +31,32 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { reviewService } from "@/api/reviewService";
 
+const matchSkillToServiceType = (workerSkills: string[], serviceType: string) => {
+  if (!workerSkills || workerSkills.length === 0) return false;
+  
+  // Normalize string for comparison
+  const normalize = (str: string) => str.toLowerCase().trim();
+  const normalizedServiceType = normalize(serviceType);
+
+  return workerSkills.some(skill => {
+    const normalizedSkill = normalize(skill);
+    
+    // Direct match
+    if (normalizedSkill === normalizedServiceType) return true;
+    
+    // Prefix / suffix mapping (e.g. Plumber <-> Plumbing, Electrician <-> Electrical, Cleaner <-> Cleaning, Carpenter <-> Carpentry, Gardener <-> Gardening)
+    if (normalizedSkill.startsWith('plumb') && normalizedServiceType.startsWith('plumb')) return true;
+    if (normalizedSkill.startsWith('electr') && normalizedServiceType.startsWith('electr')) return true;
+    if (normalizedSkill.startsWith('clean') && normalizedServiceType.startsWith('clean')) return true;
+    if (normalizedSkill.startsWith('carpent') && normalizedServiceType.startsWith('carpent')) return true;
+    if (normalizedSkill.startsWith('garden') && normalizedServiceType.startsWith('garden')) return true;
+    if (normalizedSkill.startsWith('paint') && normalizedServiceType.startsWith('paint')) return true;
+    
+    // Generic fallback: check if one contains the other
+    return normalizedSkill.includes(normalizedServiceType) || normalizedServiceType.includes(normalizedSkill);
+  });
+};
+
 export default function WorkerDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -83,7 +109,14 @@ export default function WorkerDashboard() {
       try {
         // Fetch available jobs (pending)
         const { data: availableData } = await api.get('/services/available');
-        const formattedPending = availableData.map((job: any) => ({
+        
+        // Filter jobs based on worker's skills
+        const workerSkills = user?.skills || [];
+        const matchedJobs = availableData.filter((job: any) => 
+          matchSkillToServiceType(workerSkills, job.serviceType)
+        );
+
+        const formattedPending = matchedJobs.map((job: any) => ({
           id: job._id,
           title: job.serviceType,
           description: job.description,
@@ -244,7 +277,10 @@ export default function WorkerDashboard() {
                     />
                   ))}
                   {pendingJobs.length === 0 && (
-                    <p className="text-center col-span-full py-8 text-muted-foreground">No available jobs found.</p>
+                    <div className="text-center col-span-full py-8 text-muted-foreground">
+                      <p>No available jobs found matching your skills ({user?.skills?.join(", ") || "None"}).</p>
+                      <p className="text-xs mt-2 text-muted-foreground/60">You can update your skills in your Profile to see other jobs.</p>
+                    </div>
                   )}
                 </div>
               </TabsContent>

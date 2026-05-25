@@ -44,6 +44,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import api from "@/lib/axios";
 import { useToast } from "@/hooks/use-toast";
 import { adminNavItems } from "@/config/navigation";
@@ -61,6 +68,17 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [isUserDetailOpen, setIsUserDetailOpen] = useState(false);
+  const [isAdminEditing, setIsAdminEditing] = useState(false);
+  const [adminEditForm, setAdminEditForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    nic: "",
+    role: "",
+    skills: [] as string[],
+  });
+  const [adminShowOtherSkill, setAdminShowOtherSkill] = useState(false);
+  const [adminOtherSkill, setAdminOtherSkill] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
   const location = useLocation();
@@ -148,7 +166,56 @@ export default function AdminDashboard() {
 
   const viewUserDetails = (user: any) => {
     setSelectedUser(user);
+    const userSkills = user.skills || [];
+    const hasOther = userSkills.length > 0 && !["Plumber", "Electrician", "Cleaner", "Chef", "Carpenter", "Mason", "Gardener"].includes(userSkills[0]);
+    setAdminEditForm({
+      fullName: user.fullName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      nic: user.nic || "",
+      role: user.role || "",
+      skills: userSkills,
+    });
+    setAdminShowOtherSkill(hasOther);
+    setAdminOtherSkill(hasOther ? userSkills[0] : "");
+    setIsAdminEditing(false);
     setIsUserDetailOpen(true);
+  };
+
+  const handleAdminUpdateUser = async () => {
+    if (!selectedUser) return;
+    try {
+      const finalSkills = adminShowOtherSkill ? [adminOtherSkill] : adminEditForm.skills;
+      const { data } = await api.put(`/admin/users/${selectedUser._id}`, {
+        fullName: adminEditForm.fullName,
+        email: adminEditForm.email,
+        phone: adminEditForm.phone,
+        nic: adminEditForm.nic,
+        role: adminEditForm.role,
+        skills: finalSkills,
+      });
+      toast({
+        title: "User Updated",
+        description: "User details updated successfully.",
+      });
+      setIsAdminEditing(false);
+      fetchUsers();
+      setSelectedUser({
+        ...selectedUser,
+        fullName: adminEditForm.fullName,
+        email: adminEditForm.email,
+        phone: adminEditForm.phone,
+        nic: adminEditForm.nic,
+        role: adminEditForm.role,
+        skills: finalSkills,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update user details",
+        variant: "destructive"
+      });
+    }
   };
 
   const deleteUser = async (id: string) => {
@@ -313,7 +380,16 @@ export default function AdminDashboard() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Badge variant="outline" className="capitalize">{user.role}</Badge>
+                                <div className="flex flex-col gap-1">
+                                  <Badge variant="outline" className="capitalize w-fit">{user.role}</Badge>
+                                  {user.role === 'worker' && user.skills && user.skills.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                      {user.skills.map((s: string) => (
+                                        <Badge key={s} variant="secondary" className="text-[10px] px-1 py-0 font-normal">{s}</Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="font-mono text-sm">
                                 {user.nic || 'N/A'}
@@ -379,7 +455,18 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="capitalize">{user.role}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <span className="capitalize">{user.role}</span>
+                                {user.role === 'worker' && user.skills && user.skills.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                    {user.skills.map((s: string) => (
+                                      <Badge key={s} variant="secondary" className="text-[10px] px-1 py-0 font-normal">{s}</Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <Badge variant={user.accountStatus === 'approved' ? 'default' : 'secondary'}>
                                 {user.accountStatus || 'Pending'}
@@ -595,230 +682,349 @@ export default function AdminDashboard() {
 
           {selectedUser && (
             <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Users className="h-4 w-4" />
-                    Full Name
-                  </div>
-                  <p className="text-sm text-muted-foreground">{selectedUser.fullName}</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </div>
-                  <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Phone className="h-4 w-4" />
-                    Phone
-                  </div>
-                  <p className="text-sm text-muted-foreground">{selectedUser.phone || 'N/A'}</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <IdCard className="h-4 w-4" />
-                    NIC Number
-                  </div>
-                  <p className="text-sm text-muted-foreground font-mono">{selectedUser.nic || 'N/A'}</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Briefcase className="h-4 w-4" />
-                    Role
-                  </div>
-                  <Badge variant="outline" className="capitalize">{selectedUser.role}</Badge>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <ShieldCheck className="h-4 w-4" />
-                    Status
-                  </div>
-                  <Badge variant={selectedUser.accountStatus === 'approved' ? 'default' : selectedUser.accountStatus === 'rejected' ? 'destructive' : 'secondary'}>
-                    {selectedUser.accountStatus || 'Pending'}
-                  </Badge>
-                </div>
-                {selectedUser.rejectionTimestamp && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Calendar className="h-4 w-4" />
-                      Rejected On
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(selectedUser.rejectionTimestamp).toLocaleString()}
-                    </p>
-                  </div>
-                )}
-                {selectedUser.createdAt && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Calendar className="h-4 w-4" />
-                      Registered On
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(selectedUser.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                )}
-                {selectedUser.addedBy && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Users className="h-4 w-4" />
-                      Added By (Broker)
-                    </div>
-                    <p className="text-sm text-muted-foreground font-mono">
-                      {selectedUser.addedBy}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Address */}
-              {selectedUser.location?.address && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <MapPin className="h-4 w-4" />
-                    Address
-                  </div>
-                  <p className="text-sm text-muted-foreground">{selectedUser.location.address}</p>
-                  {selectedUser.location.coordinates && (
-                    <p className="text-xs text-muted-foreground font-mono">
-                      Coordinates: {selectedUser.location.coordinates[1]?.toFixed(6)}, {selectedUser.location.coordinates[0]?.toFixed(6)}
-                    </p>
+              {/* Edit Toggle / Header Edit Mode */}
+              <div className="flex justify-between items-center border-b pb-4">
+                <span className="font-semibold text-lg">
+                  {isAdminEditing ? "Editing User Details" : "User Profile Details"}
+                </span>
+                <div className="flex gap-2">
+                  {isAdminEditing ? (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setIsAdminEditing(false)}>
+                        Cancel
+                      </Button>
+                      <Button variant="default" size="sm" onClick={handleAdminUpdateUser}>
+                        Save Changes
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => setIsAdminEditing(true)}>
+                      Edit Details
+                    </Button>
                   )}
                 </div>
-              )}
+              </div>
 
-              {/* Skills (for workers) */}
-              {selectedUser.skills && selectedUser.skills.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Briefcase className="h-4 w-4" />
-                    Skills
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedUser.skills.map((skill: string, idx: number) => (
-                      <Badge key={idx} variant="outline">{skill}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* NIC Photo */}
-              {selectedUser.nicPhoto && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <IdCard className="h-4 w-4" />
-                    NIC Photo
-                  </div>
-                  <div className="border rounded-md p-2">
-                    <img
-                      src={getImageUrl(selectedUser.nicPhoto)}
-                      alt="NIC Photo"
-                      className="max-w-full h-auto max-h-96 rounded-md object-contain"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '';
-                      }}
+              {isAdminEditing ? (
+                /* Edit Form */
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Full Name</label>
+                    <Input
+                      value={adminEditForm.fullName}
+                      onChange={(e) => setAdminEditForm({ ...adminEditForm, fullName: e.target.value })}
                     />
                   </div>
-                </div>
-              )}
-
-              {/* Working Photos (for workers) */}
-              {selectedUser.role === 'worker' && selectedUser.workingPhotos && selectedUser.workingPhotos.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <FileText className="h-4 w-4" />
-                    Working Photos
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Email</label>
+                    <Input
+                      value={adminEditForm.email}
+                      onChange={(e) => setAdminEditForm({ ...adminEditForm, email: e.target.value })}
+                    />
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {selectedUser.workingPhotos.map((photo: string, idx: number) => (
-                      <div key={idx} className="border rounded-md p-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Phone</label>
+                    <Input
+                      value={adminEditForm.phone}
+                      onChange={(e) => setAdminEditForm({ ...adminEditForm, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">NIC Number</label>
+                    <Input
+                      value={adminEditForm.nic}
+                      onChange={(e) => setAdminEditForm({ ...adminEditForm, nic: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Role</label>
+                    <Select
+                      value={adminEditForm.role}
+                      onValueChange={(val) => setAdminEditForm({ ...adminEditForm, role: val })}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="requester">Requester (Customer)</SelectItem>
+                        <SelectItem value="worker">Worker (Service Provider)</SelectItem>
+                        <SelectItem value="broker">Broker</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {adminEditForm.role === 'worker' && (
+                    <div className="space-y-2 md:col-span-2 border-t pt-4 mt-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Skill/Job Type</label>
+                        <Select
+                          value={adminShowOtherSkill ? "Other" : (adminEditForm.skills[0] || "")}
+                          onValueChange={(val) => {
+                            if (val === "Other") {
+                              setAdminShowOtherSkill(true);
+                              setAdminEditForm(prev => ({ ...prev, skills: [] }));
+                            } else {
+                              setAdminShowOtherSkill(false);
+                              setAdminEditForm(prev => ({ ...prev, skills: val ? [val] : [] }));
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select skill" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Plumber">Plumber</SelectItem>
+                            <SelectItem value="Electrician">Electrician</SelectItem>
+                            <SelectItem value="Cleaner">Cleaner</SelectItem>
+                            <SelectItem value="Chef">Chef</SelectItem>
+                            <SelectItem value="Carpenter">Carpenter</SelectItem>
+                            <SelectItem value="Mason">Mason</SelectItem>
+                            <SelectItem value="Gardener">Gardener</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {adminShowOtherSkill && (
+                        <div className="space-y-2 mt-2">
+                          <label className="text-sm font-medium">Specify Custom Skill</label>
+                          <Input
+                            value={adminOtherSkill}
+                            onChange={(e) => setAdminOtherSkill(e.target.value)}
+                            placeholder="Specify skill"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* View Mode */
+                <>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Users className="h-4 w-4" />
+                        Full Name
+                      </div>
+                      <p className="text-sm text-muted-foreground">{selectedUser.fullName}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Mail className="h-4 w-4" />
+                        Email
+                      </div>
+                      <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Phone className="h-4 w-4" />
+                        Phone
+                      </div>
+                      <p className="text-sm text-muted-foreground">{selectedUser.phone || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <IdCard className="h-4 w-4" />
+                        NIC Number
+                      </div>
+                      <p className="text-sm text-muted-foreground font-mono">{selectedUser.nic || 'N/A'}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Briefcase className="h-4 w-4" />
+                        Role
+                      </div>
+                      <Badge variant="outline" className="capitalize">{selectedUser.role}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <ShieldCheck className="h-4 w-4" />
+                        Status
+                      </div>
+                      <Badge variant={selectedUser.accountStatus === 'approved' ? 'default' : selectedUser.accountStatus === 'rejected' ? 'destructive' : 'secondary'}>
+                        {selectedUser.accountStatus || 'Pending'}
+                      </Badge>
+                    </div>
+                    {selectedUser.rejectionTimestamp && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Calendar className="h-4 w-4" />
+                          Rejected On
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(selectedUser.rejectionTimestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser.createdAt && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Calendar className="h-4 w-4" />
+                          Registered On
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(selectedUser.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedUser.addedBy && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Users className="h-4 w-4" />
+                          Added By (Broker)
+                        </div>
+                        <p className="text-sm text-muted-foreground font-mono">
+                          {selectedUser.addedBy}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  {selectedUser.location?.address && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <MapPin className="h-4 w-4" />
+                        Address
+                      </div>
+                      <p className="text-sm text-muted-foreground">{selectedUser.location.address}</p>
+                      {selectedUser.location.coordinates && (
+                        <p className="text-xs text-muted-foreground font-mono">
+                          Coordinates: {selectedUser.location.coordinates[1]?.toFixed(6)}, {selectedUser.location.coordinates[0]?.toFixed(6)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Skills (for workers) */}
+                  {selectedUser.skills && selectedUser.skills.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Briefcase className="h-4 w-4" />
+                        Skills
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedUser.skills.map((skill: string, idx: number) => (
+                          <Badge key={idx} variant="outline">{skill}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* NIC Photo */}
+                  {selectedUser.nicPhoto && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <IdCard className="h-4 w-4" />
+                        NIC Photo
+                      </div>
+                      <div className="border rounded-md p-2">
                         <img
-                          src={getImageUrl(photo)}
-                          alt={`Working Photo ${idx + 1}`}
-                          className="w-full h-auto max-h-48 rounded-md object-contain"
+                          src={getImageUrl(selectedUser.nicPhoto)}
+                          alt="NIC Photo"
+                          className="max-w-full h-auto max-h-96 rounded-md object-contain"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/placeholder-image.png';
+                            (e.target as HTMLImageElement).src = '';
                           }}
                         />
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </div>
+                  )}
 
-              {/* GP Letters (for workers) */}
-              {selectedUser.role === 'worker' && selectedUser.gpLetters && selectedUser.gpLetters.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <FileText className="h-4 w-4" />
-                    GP Letters
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {selectedUser.gpLetters.map((letter: string, idx: number) => {
-                      // Check if file is PDF by checking filename
-                      const filename = letter.split('/').pop() || '';
-                      const isPDF = filename.toLowerCase().endsWith('.pdf');
-
-                      return (
-                        <div key={idx} className="border rounded-md p-2">
-                          {isPDF ? (
-                            <a
-                              href={getImageUrl(letter)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-primary hover:underline"
-                            >
-                              View PDF {idx + 1}
-                            </a>
-                          ) : (
+                  {/* Working Photos (for workers) */}
+                  {selectedUser.role === 'worker' && selectedUser.workingPhotos && selectedUser.workingPhotos.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <FileText className="h-4 w-4" />
+                        Working Photos
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {selectedUser.workingPhotos.map((photo: string, idx: number) => (
+                          <div key={idx} className="border rounded-md p-2">
                             <img
-                              src={getImageUrl(letter)}
-                              alt={`GP Letter ${idx + 1}`}
+                              src={getImageUrl(photo)}
+                              alt={`Working Photo ${idx + 1}`}
                               className="w-full h-auto max-h-48 rounded-md object-contain"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = '/placeholder-image.png';
                               }}
                             />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-4 border-t">
-                <Button
-                  onClick={() => updateUserStatus(selectedUser._id, 'approved')}
-                  className="bg-success hover:bg-success/90"
-                  disabled={selectedUser.accountStatus === 'approved'}
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Approve
-                </Button>
-                <Button
-                  onClick={() => updateUserStatus(selectedUser._id, 'rejected')}
-                  variant="destructive"
-                  disabled={selectedUser.accountStatus === 'rejected'}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Reject
-                </Button>
-                <Button
-                  onClick={() => updateUserStatus(selectedUser._id, 'pending')}
-                  variant="outline"
-                  disabled={selectedUser.accountStatus === 'pending'}
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Set Pending
-                </Button>
-              </div>
+                  {/* GP Letters (for workers) */}
+                  {selectedUser.role === 'worker' && selectedUser.gpLetters && selectedUser.gpLetters.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <FileText className="h-4 w-4" />
+                        GP Letters
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {selectedUser.gpLetters.map((letter: string, idx: number) => {
+                          const filename = letter.split('/').pop() || '';
+                          const isPDF = filename.toLowerCase().endsWith('.pdf');
+
+                          return (
+                            <div key={idx} className="border rounded-md p-2">
+                              {isPDF ? (
+                                <a
+                                  href={getImageUrl(letter)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-primary hover:underline"
+                                >
+                                  View PDF {idx + 1}
+                                </a>
+                              ) : (
+                                <img
+                                  src={getImageUrl(letter)}
+                                  alt={`GP Letter ${idx + 1}`}
+                                  className="w-full h-auto max-h-48 rounded-md object-contain"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/placeholder-image.png';
+                                  }}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-4 border-t">
+                    <Button
+                      onClick={() => updateUserStatus(selectedUser._id, 'approved')}
+                      className="bg-success hover:bg-success/90"
+                      disabled={selectedUser.accountStatus === 'approved'}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Approve
+                    </Button>
+                    <Button
+                      onClick={() => updateUserStatus(selectedUser._id, 'rejected')}
+                      variant="destructive"
+                      disabled={selectedUser.accountStatus === 'rejected'}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={() => updateUserStatus(selectedUser._id, 'pending')}
+                      variant="outline"
+                      disabled={selectedUser.accountStatus === 'pending'}
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Set Pending
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>

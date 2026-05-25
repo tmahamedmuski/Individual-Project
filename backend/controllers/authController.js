@@ -253,11 +253,13 @@ const updateProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const { fullName, phone, location } = req.body;
+        const { fullName, phone, location, profilePicture, skills } = req.body;
 
         if (fullName) user.fullName = fullName;
         if (phone) user.phone = phone;
         if (location) user.location = location;
+        if (profilePicture !== undefined) user.profilePicture = profilePicture;
+        if (skills !== undefined) user.skills = skills;
 
         const updatedUser = await user.save();
         res.json({
@@ -268,6 +270,7 @@ const updateProfile = async (req, res) => {
             phone: updatedUser.phone,
             location: updatedUser.location,
             accountStatus: updatedUser.accountStatus,
+            skills: updatedUser.skills,
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -693,7 +696,7 @@ const getUserById = async (req, res) => {
 // @access  Private (Any authenticated user)
 const getAllUsersPublic = async (req, res) => {
     try {
-        const users = await User.find({}).select('fullName email role profilePicture accountStatus');
+        const users = await User.find({}).select('fullName email role profilePicture accountStatus skills');
         res.status(200).json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });

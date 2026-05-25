@@ -26,7 +26,7 @@ export default function FindWorkers() {
     const initialNearMe = searchParams.get('view') !== 'all';
     const [isNearMe, setIsNearMe] = useState(initialNearMe);
     const [workers, setWorkers] = useState<any[]>([]);
-    const [workerGroups, setWorkerGroups] = useState<{ [key: string]: any[] }>({});
+    const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(true);
 
     // Fetch workers
@@ -42,36 +42,6 @@ export default function FindWorkers() {
 
                 const { data } = await api.get(url);
                 setWorkers(data);
-
-                // Group by distance
-                const groups: { [key: string]: any[] } = {
-                    "Within 1km": [],
-                    "Within 2km": [],
-                    "Within 5km": [],
-                    "Within 10km": [],
-                    "Other Available Workers": []
-                };
-
-                data.forEach((worker: any) => {
-                    if (worker.distance) {
-                        const distKm = worker.distance / 1000;
-                        if (distKm <= 1) groups["Within 1km"].push(worker);
-                        else if (distKm <= 2) groups["Within 2km"].push(worker);
-                        else if (distKm <= 5) groups["Within 5km"].push(worker);
-                        else if (distKm <= 10) groups["Within 10km"].push(worker);
-                        else groups["Other Available Workers"].push(worker);
-                    } else {
-                        groups["Other Available Workers"].push(worker);
-                    }
-                });
-
-                // Filter out empty groups
-                const activeGroups = Object.keys(groups).reduce((acc: any, key) => {
-                    if (groups[key].length > 0) acc[key] = groups[key];
-                    return acc;
-                }, {});
-
-                setWorkerGroups(activeGroups);
             } catch (error) {
                 console.error("Error fetching workers:", error);
                 toast({
@@ -91,6 +61,45 @@ export default function FindWorkers() {
         setIsNearMe(nearMe);
         setSearchParams({ view: nearMe ? 'nearby' : 'all' });
     };
+
+    // Filter and group workers dynamically in-memory based on search query
+    const filteredWorkers = workers.filter((worker: any) => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return true;
+        
+        const matchesName = worker.fullName?.toLowerCase().includes(query);
+        const matchesSkill = worker.skills && worker.skills.some((skill: string) => 
+            skill.toLowerCase().includes(query)
+        );
+        return matchesName || matchesSkill;
+    });
+
+    const groups: { [key: string]: any[] } = {
+        "Within 1km": [],
+        "Within 2km": [],
+        "Within 5km": [],
+        "Within 10km": [],
+        "Other Available Workers": []
+    };
+
+    filteredWorkers.forEach((worker: any) => {
+        if (worker.distance) {
+            const distKm = worker.distance / 1000;
+            if (distKm <= 1) groups["Within 1km"].push(worker);
+            else if (distKm <= 2) groups["Within 2km"].push(worker);
+            else if (distKm <= 5) groups["Within 5km"].push(worker);
+            else if (distKm <= 10) groups["Within 10km"].push(worker);
+            else groups["Other Available Workers"].push(worker);
+        } else {
+            groups["Other Available Workers"].push(worker);
+        }
+    });
+
+    // Filter out empty groups
+    const workerGroups = Object.keys(groups).reduce((acc: Record<string, any[]>, key) => {
+        if (groups[key].length > 0) acc[key] = groups[key];
+        return acc;
+    }, {} as Record<string, any[]>);
 
     return (
         <DashboardLayout
@@ -117,7 +126,12 @@ export default function FindWorkers() {
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search workers by skill..." className="pl-10" />
+                        <Input 
+                            placeholder="Search workers by skill..." 
+                            className="pl-10" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
                     <div className="flex items-center gap-2 bg-muted/50 p-1 rounded-lg border">
                         <Button

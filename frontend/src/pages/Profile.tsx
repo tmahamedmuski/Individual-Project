@@ -4,6 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Users,
   Mail,
@@ -37,8 +45,14 @@ const Profile = () => {
     fullName: "",
     phone: "",
     address: "",
+    profilePicture: "",
+    skills: [] as string[],
   });
+  const [showOtherSkill, setShowOtherSkill] = useState(false);
+  const [otherSkill, setOtherSkill] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const PREDEFINED_SKILLS = ["Plumber", "Electrician", "Cleaner", "Chef", "Carpenter", "Mason", "Gardener"];
 
   useEffect(() => {
     fetchUserDetails();
@@ -48,11 +62,17 @@ const Profile = () => {
     try {
       const { data } = await api.get('/auth/me');
       setUser(data);
+      const userSkills = data.skills || [];
+      const hasOther = userSkills.length > 0 && !PREDEFINED_SKILLS.includes(userSkills[0]);
       setEditForm({
         fullName: data.fullName || "",
         phone: data.phone || "",
         address: data.location?.address || "",
+        profilePicture: data.profilePicture || "",
+        skills: userSkills,
       });
+      setShowOtherSkill(hasOther);
+      setOtherSkill(hasOther ? userSkills[0] : "");
     } catch (error) {
       console.error('Error fetching user details:', error);
       toast({
@@ -67,9 +87,12 @@ const Profile = () => {
 
   const handleUpdateProfile = async () => {
     try {
+      const finalSkills = showOtherSkill ? [otherSkill] : editForm.skills;
       const { data } = await api.put('/auth/profile', {
         fullName: editForm.fullName,
         phone: editForm.phone,
+        profilePicture: editForm.profilePicture,
+        skills: finalSkills,
         location: {
           ...user.location,
           address: editForm.address,
@@ -328,6 +351,23 @@ const Profile = () => {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
+                  <ImageIcon className="h-4 w-4" />
+                  Profile Image URL
+                </div>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editForm.profilePicture}
+                    onChange={(e) => setEditForm({ ...editForm, profilePicture: e.target.value })}
+                    className="w-full p-2 text-sm border rounded-md"
+                    placeholder="Enter image URL..."
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground truncate" title={user.profilePicture || 'No image URL set'}>{user.profilePicture || 'No image URL set'}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
                   <IdCard className="h-4 w-4" />
                   NIC Number
                 </div>
@@ -415,18 +455,69 @@ const Profile = () => {
           )}
 
           {/* Skills (for workers) */}
-          {user.skills && user.skills.length > 0 && (
+          {(user.role === 'worker' && (isEditing || (user.skills && user.skills.length > 0))) && (
             <Card>
               <CardHeader>
                 <CardTitle>Skills</CardTitle>
                 <CardDescription>Your professional skills</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {user.skills.map((skill: string, idx: number) => (
-                    <Badge key={idx} variant="outline">{skill}</Badge>
-                  ))}
-                </div>
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select your Skill/Job Type</label>
+                      <Select
+                        value={showOtherSkill ? "Other" : (editForm.skills[0] || "")}
+                        onValueChange={(val) => {
+                          if (val === "Other") {
+                            setShowOtherSkill(true);
+                            setEditForm(prev => ({ ...prev, skills: [] }));
+                          } else {
+                            setShowOtherSkill(false);
+                            setEditForm(prev => ({ ...prev, skills: val ? [val] : [] }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select skill" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Plumber">Plumber</SelectItem>
+                          <SelectItem value="Electrician">Electrician</SelectItem>
+                          <SelectItem value="Cleaner">Cleaner</SelectItem>
+                          <SelectItem value="Chef">Chef</SelectItem>
+                          <SelectItem value="Carpenter">Carpenter</SelectItem>
+                          <SelectItem value="Mason">Mason</SelectItem>
+                          <SelectItem value="Gardener">Gardener</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {showOtherSkill && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Specify Other Skill</label>
+                        <Input
+                          type="text"
+                          value={otherSkill}
+                          onChange={(e) => setOtherSkill(e.target.value)}
+                          placeholder="Enter your skill"
+                          className="w-full p-2 text-sm border rounded-md"
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {user.skills && user.skills.length > 0 ? (
+                      user.skills.map((skill: string, idx: number) => (
+                        <Badge key={idx} variant="outline">{skill}</Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No skills specified</span>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

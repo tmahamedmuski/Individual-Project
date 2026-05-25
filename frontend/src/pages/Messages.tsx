@@ -90,6 +90,12 @@ export default function Messages() {
         try {
             const { data } = await api.get(`/messages/${userId}`);
             setMessages(data);
+            
+            // Sync read status with the backend database
+            await api.put(`/messages/${userId}/read`);
+            
+            // Refresh conversation list to get fresh unread counts
+            fetchConversations();
         } catch (error) {
             console.error("Error fetching messages:", error);
             toast({
