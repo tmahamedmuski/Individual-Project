@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { requesterNavItems, brokerNavItems, adminNavItems } from "@/config/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ interface Location {
 
 export default function CreateRequest() {
     const { user } = useAuth();
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
@@ -137,46 +139,46 @@ export default function CreateRequest() {
         >
             <div className="max-w-2xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold">Post New Request</h1>
+                    <h1 className="text-2xl font-bold">{t("Post New Request")}</h1>
                     <p className="text-muted-foreground">
-                        Fill in the details below to find a worker for your task.
+                        {t("Fill in the details below to find a worker for your task.")}
                     </p>
                 </div>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Service Details</CardTitle>
+                        <CardTitle>{t("Service Details")}</CardTitle>
                         <CardDescription>
-                            Provide clear information to get the best matches.
+                            {t("Provide clear information to get the best matches.")}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="serviceType">Service Type</Label>
+                                <Label htmlFor="serviceType">{t("Service Type")}</Label>
                                 <Select onValueChange={handleSelectChange}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select a service type" />
+                                        <SelectValue placeholder={t("Select a service type")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Plumbing">Plumbing</SelectItem>
-                                        <SelectItem value="Electrical">Electrical</SelectItem>
-                                        <SelectItem value="Cleaning">Cleaning</SelectItem>
-                                        <SelectItem value="Gardening">Gardening</SelectItem>
-                                        <SelectItem value="Carpentry">Carpentry</SelectItem>
-                                        <SelectItem value="Painting">Painting</SelectItem>
-                                        <SelectItem value="Moving">Moving</SelectItem>
-                                        <SelectItem value="Other">Other</SelectItem>
+                                        <SelectItem value="Plumbing">{t("Plumbing")}</SelectItem>
+                                        <SelectItem value="Electrical">{t("Electrical")}</SelectItem>
+                                        <SelectItem value="Cleaning">{t("Cleaning")}</SelectItem>
+                                        <SelectItem value="Gardening">{t("Gardening")}</SelectItem>
+                                        <SelectItem value="Carpentry">{t("Carpentry")}</SelectItem>
+                                        <SelectItem value="Painting">{t("Painting")}</SelectItem>
+                                        <SelectItem value="Moving">{t("Moving")}</SelectItem>
+                                        <SelectItem value="Other">{t("Other")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description">{t("Description")}</Label>
                                 <Textarea
                                     id="description"
                                     name="description"
-                                    placeholder="Describe the issue or task in detail..."
+                                    placeholder={t("Describe the issue or task in detail...")}
                                     value={formData.description}
                                     onChange={handleChange}
                                     rows={4}
@@ -184,23 +186,23 @@ export default function CreateRequest() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="partsRequired">Parts Required (Optional)</Label>
+                                <Label htmlFor="partsRequired">{t("Parts Required")}</Label>
                                 <Input
                                     id="partsRequired"
                                     name="partsRequired"
-                                    placeholder="List any parts or hardware needed..."
+                                    placeholder={t("List any parts or hardware needed...")}
                                     value={formData.partsRequired}
                                     onChange={handleChange}
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="location">Location</Label>
+                                <Label htmlFor="location">{t("Location")}</Label>
                                 {/* Read-only address filled from map pin */}
                                 <Input
                                     id="location"
                                     name="location"
-                                    placeholder="Pin your location on the map below"
+                                    placeholder={t("Pin your location on the map below")}
                                     value={formData.location}
                                     onChange={handleChange}
                                     readOnly
@@ -211,7 +213,7 @@ export default function CreateRequest() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="phoneNumber">Phone Number</Label>
+                                <Label htmlFor="phoneNumber">{t("Phone Number")}</Label>
                                 <Input
                                     id="phoneNumber"
                                     name="phoneNumber"
@@ -223,7 +225,7 @@ export default function CreateRequest() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="date">Date</Label>
+                                    <Label htmlFor="date">{t("Date")}</Label>
                                     <Input
                                         id="date"
                                         name="date"
@@ -234,7 +236,7 @@ export default function CreateRequest() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="time">Time</Label>
+                                    <Label htmlFor="time">{t("Time")}</Label>
                                     <Input
                                         id="time"
                                         name="time"
@@ -252,16 +254,16 @@ export default function CreateRequest() {
                                     onClick={() => navigate(getDashboardPath())}
                                     disabled={isLoading}
                                 >
-                                    Cancel
+                                    {t("Cancel")}
                                 </Button>
                                 <Button type="submit" disabled={isLoading}>
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Posting...
+                                            {t("Posting...")}
                                         </>
                                     ) : (
-                                        "Post Request"
+                                        t("Post Request")
                                     )}
                                 </Button>
                             </div>

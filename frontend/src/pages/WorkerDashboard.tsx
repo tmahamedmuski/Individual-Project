@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ReviewModal } from "@/components/ReviewModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { reviewService } from "@/api/reviewService";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const matchSkillToServiceType = (workerSkills: string[], serviceType: string) => {
   if (!workerSkills || workerSkills.length === 0) return false;
@@ -59,6 +60,7 @@ const matchSkillToServiceType = (workerSkills: string[], serviceType: string) =>
 
 export default function WorkerDashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [pendingJobs, setPendingJobs] = useState<any[]>([]);
@@ -198,56 +200,56 @@ export default function WorkerDashboard() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Worker Dashboard</h1>
+            <h1 className="text-2xl font-bold">{t("Worker Dashboard")}</h1>
             <p className="text-muted-foreground">
-              Find jobs and manage your work
+              {t("Find jobs and manage your work")}
             </p>
           </div>
           <div className="flex gap-2">
             <Button className="w-fit">
               <Search className="h-4 w-4 mr-2" />
-              Find Work
+              {t("Find Work")}
             </Button>
           </div>
         </div>
-
+ 
         {/* Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Jobs Completed"
+            title={t("Jobs Completed")}
             value={completedJobs.filter(j => j.status === 'completed').length}
             icon={Briefcase}
             variant="worker"
           />
           <StatCard
-            title="Active Jobs"
+            title={t("Active Jobs")}
             value={completedJobs.filter(j => j.status === 'assigned' || j.status === 'in_progress').length}
             icon={Clock}
             variant="worker"
           />
           <StatCard
-            title="Your Rating"
+            title={t("Your Rating")}
             value={myStats.reviewCount ? `${myStats.rating.toFixed(1)}/5` : "—"}
-            subtitle={myStats.reviewCount ? `${myStats.reviewCount} reviews` : "No reviews yet"}
+            subtitle={myStats.reviewCount ? `${myStats.reviewCount} reviews` : t("No reviews yet.")}
             icon={Star}
             variant="worker"
           />
           <StatCard
-            title="Total Earnings"
+            title={t("Total Earnings")}
             value="Rs. 12.5k"
             icon={CheckCircle}
             variant="worker"
           />
         </div>
-
+ 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             <Tabs defaultValue="marketplace" className="space-y-4">
               <TabsList>
-                <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
-                <TabsTrigger value="my-jobs">My Jobs</TabsTrigger>
-                <TabsTrigger value="reviews">My Reviews</TabsTrigger>
+                <TabsTrigger value="marketplace">{t("Marketplace")}</TabsTrigger>
+                <TabsTrigger value="my-jobs">{t("My Jobs")}</TabsTrigger>
+                <TabsTrigger value="reviews">{t("My Reviews")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="marketplace">
@@ -278,8 +280,7 @@ export default function WorkerDashboard() {
                   ))}
                   {pendingJobs.length === 0 && (
                     <div className="text-center col-span-full py-8 text-muted-foreground">
-                      <p>No available jobs found matching your skills ({user?.skills?.join(", ") || "None"}).</p>
-                      <p className="text-xs mt-2 text-muted-foreground/60">You can update your skills in your Profile to see other jobs.</p>
+                      <p>{t("No matched jobs found.")}</p>
                     </div>
                   )}
                 </div>
@@ -332,7 +333,7 @@ export default function WorkerDashboard() {
                 <div className="space-y-4">
                   {/* Recent Reviews (Full List in Tab) */}
                   {reviews.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No reviews yet.</p>
+                    <p className="text-sm text-muted-foreground">{t("No reviews yet.")}</p>
                   ) : (
                     reviews.map((review, index) => (
                       <div key={index} className="space-y-1 border p-3 rounded-md">
@@ -357,7 +358,7 @@ export default function WorkerDashboard() {
             {/* Profile Completion */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Profile Completion</CardTitle>
+                <CardTitle className="text-base">{t("Profile Completion")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
@@ -369,7 +370,7 @@ export default function WorkerDashboard() {
                   Add more skills to attract more clients
                 </p>
                 <Button variant="outline" size="sm" className="w-full">
-                  Complete Profile
+                  {t("Complete Profile")}
                 </Button>
               </CardContent>
             </Card>
@@ -379,7 +380,7 @@ export default function WorkerDashboard() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Star className="h-4 w-4 text-warning" />
-                  Recent Reviews
+                  {t("Recent Reviews")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -395,7 +396,7 @@ export default function WorkerDashboard() {
                     <p className="text-xs text-muted-foreground truncate">{review.comment}</p>
                   </div>
                 ))}
-                {reviews.length === 0 && <p className="text-sm text-muted-foreground">No reviews yet.</p>}
+                {reviews.length === 0 && <p className="text-sm text-muted-foreground">{t("No reviews yet.")}</p>}
               </CardContent>
             </Card>
           </div>

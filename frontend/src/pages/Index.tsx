@@ -156,7 +156,7 @@ const Index = () => {
               </div>
             </div>
             <p className="text-sm text-sidebar-foreground/60">
-              © 2025 Smart Service Platform. All rights reserved.
+              © {new Date().getFullYear()} Smart Service Platform. All rights reserved.
             </p>
           </div>
         </div>

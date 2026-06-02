@@ -1,5 +1,6 @@
 const ServiceRequest = require('../models/ServiceRequest');
 const User = require('../models/User');
+const { sendNewJobNotificationEmail } = require('../utils/emailService');
 
 // @desc    Create new service request
 // @route   POST /api/services
@@ -7,22 +8,66 @@ const User = require('../models/User');
 const createRequest = async (req, res) => {
     const { serviceType, description, location, date, time, phoneNumber, budget, partsRequired } = req.body;
 
-    if (!serviceType || !description || !location || !date || !time || !phoneNumber) {
+    if (!serviceType || !description || !location || !phoneNumber) {
         return res.status(400).json({ message: 'Please add all required fields' });
     }
 
     try {
+        const now = new Date();
+        const defaultDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        const defaultTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
+        const requestDate = date || defaultDate;
+        const requestTime = time || defaultTime;
+
         const request = await ServiceRequest.create({
             serviceType,
             description,
             location,
-            date,
-            time,
+            date: requestDate,
+            time: requestTime,
             phoneNumber,
             budget: budget != null && budget !== '' ? Number(budget) : undefined,
             partsRequired,
             requester: req.user.id,
         });
+
+        // Find approved workers whose skills match this service type
+        // Run this in background so it doesn't block the API response
+        setTimeout(async () => {
+            try {
+                const workers = await User.find({ role: 'worker', accountStatus: 'approved' });
+                
+                const matchedWorkers = workers.filter(worker => {
+                    const workerSkills = worker.skills || [];
+                    if (workerSkills.length === 0) return false;
+                    
+                    const normalize = (str) => str.toLowerCase().trim();
+                    const normalizedServiceType = normalize(serviceType);
+
+                    return workerSkills.some(skill => {
+                        const normalizedSkill = normalize(skill);
+                        if (normalizedSkill === normalizedServiceType) return true;
+                        if (normalizedSkill.startsWith('plumb') && normalizedServiceType.startsWith('plumb')) return true;
+                        if (normalizedSkill.startsWith('electr') && normalizedServiceType.startsWith('electr')) return true;
+                        if (normalizedSkill.startsWith('clean') && normalizedServiceType.startsWith('clean')) return true;
+                        if (normalizedSkill.startsWith('carpent') && normalizedServiceType.startsWith('carpent')) return true;
+                        if (normalizedSkill.startsWith('garden') && normalizedServiceType.startsWith('garden')) return true;
+                        if (normalizedSkill.startsWith('paint') && normalizedServiceType.startsWith('paint')) return true;
+                        return normalizedSkill.includes(normalizedServiceType) || normalizedServiceType.includes(normalizedSkill);
+                    });
+                });
+
+                console.log(`[ServiceController] Found ${matchedWorkers.length} matching workers for job type: ${serviceType}`);
+                
+                for (const worker of matchedWorkers) {
+                    sendNewJobNotificationEmail(worker.email, worker.fullName, request).catch(err => {
+                        console.error(`Failed to send job notification to ${worker.email}:`, err.message);
+                    });
+                }
+            } catch (err) {
+                console.error('[ServiceController] Error notifying matching workers:', err);
+            }
+        }, 0);
 
         res.status(201).json(request);
     } catch (error) {

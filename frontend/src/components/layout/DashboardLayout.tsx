@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getImageUrl } from "@/lib/imageUtils";
 import api from "@/lib/axios";
 import {
@@ -54,6 +55,7 @@ export function DashboardLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
   const [jobRequestsCount, setJobRequestsCount] = useState<number>(0);
   const [myRequestsCount, setMyRequestsCount] = useState<number>(0);
@@ -103,10 +105,10 @@ export function DashboardLayout({
   };
 
   const roleLabels = {
-    requester: "Service Requester",
-    worker: "Service Worker",
-    broker: "Broker/Manager",
-    admin: "Administrator",
+    requester: t("Service Requester"),
+    worker: t("Service Worker"),
+    broker: t("Broker/Manager"),
+    admin: t("Administrator"),
   };
 
   return (
@@ -187,7 +189,7 @@ export function DashboardLayout({
                 <item.icon className="h-5 w-5 flex-shrink-0" />
                 {!sidebarCollapsed && (
                   <>
-                    <span className="flex-1 font-medium text-sm">{item.label}</span>
+                    <span className="flex-1 font-medium text-sm">{t(item.label)}</span>
                     {displayBadge !== undefined && (
                       <Badge variant="secondary" className="h-5 px-2 text-xs">
                         {displayBadge}
@@ -210,7 +212,7 @@ export function DashboardLayout({
           ) : (
             <>
               <ChevronLeft className="h-5 w-5 mr-2" />
-              <span className="text-sm">Collapse</span>
+              <span className="text-sm">{t("Collapse")}</span>
             </>
           )}
         </button>
@@ -237,6 +239,28 @@ export function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Language Switcher */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 px-2 font-medium text-xs h-9">
+                  🌐 {language === "en" ? "English" : language === "si" ? "සිංහල" : "தமிழ்"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36">
+                <DropdownMenuLabel>{t("Select Language")}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setLanguage("en")} className={cn(language === "en" && "font-bold bg-accent")}>
+                  English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("si")} className={cn(language === "si" && "font-bold bg-accent")}>
+                  සිංහල (Sinhala)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLanguage("ta")} className={cn(language === "ta" && "font-bold bg-accent")}>
+                  தமிழ் (Tamil)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Notifications */}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
@@ -260,25 +284,25 @@ export function DashboardLayout({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("Profile")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="flex items-center">
                     <User className="mr-2 h-4 w-4" />
-                    Profile
+                    {t("Profile")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/settings" className="flex items-center">
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    {t("Settings")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/" className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    {t("Logout")}
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>

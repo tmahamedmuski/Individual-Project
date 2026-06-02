@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Bid = require('../models/Bid');
 const ServiceRequest = require('../models/ServiceRequest');
 const Message = require('../models/Message');
+const { sendBidRejectedNotificationEmail } = require('../utils/emailService');
 
 // @desc    Place a bid
 // @route   POST /api/bids
@@ -91,11 +92,32 @@ const acceptBid = asyncHandler(async (req, res) => {
         serviceRequest: serviceRequest._id,
     });
 
-    // Reject other bids for this request (Optional)
-    // await Bid.updateMany(
-    //     { serviceRequest: serviceRequest._id, _id: { $ne: bidId } },
-    //     { status: 'rejected' }
-    // );
+    // Reject other bids for this request and notify workers
+    try {
+        const otherBids = await Bid.find({
+            serviceRequest: serviceRequest._id,
+            _id: { $ne: bidId }
+        }).populate('worker', 'fullName email');
+
+        await Bid.updateMany(
+            { serviceRequest: serviceRequest._id, _id: { $ne: bidId } },
+            { status: 'rejected' }
+        );
+
+        for (const otherBid of otherBids) {
+            if (otherBid.worker && otherBid.worker.email) {
+                sendBidRejectedNotificationEmail(
+                    otherBid.worker.email,
+                    otherBid.worker.fullName,
+                    serviceRequest
+                ).catch(err => {
+                    console.error(`Failed to send rejection notification to ${otherBid.worker.email}:`, err.message);
+                });
+            }
+        }
+    } catch (notifyError) {
+        console.error('Error handling other bids rejection/notification:', notifyError);
+    }
 
     res.status(200).json({
         message: 'Bid accepted successfully',

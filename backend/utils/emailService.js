@@ -4,19 +4,21 @@ const nodemailer = require('nodemailer');
 const createTransporter = () => {
     // For development, you can use Gmail or other SMTP services
     // Update these in your .env file
+    const pass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : '';
     return nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: process.env.SMTP_PORT || 587,
+        port: parseInt(process.env.SMTP_PORT) || 587,
         secure: false, // true for 465, false for other ports
         auth: {
             user: process.env.SMTP_USER, // Your email
-            pass: process.env.SMTP_PASS, // Your email password or app password
+            pass: pass, // Your email password or app password (stripped of spaces)
         },
     });
 };
 
 // Send OTP email
 const sendOTPEmail = async (email, otp) => {
+    console.log(`\n==================================================\n[OTP Notification] Generating OTP for ${email}: ${otp}\n==================================================\n`);
     try {
         const transporter = createTransporter();
 
@@ -51,6 +53,7 @@ const sendOTPEmail = async (email, otp) => {
 
 // Send registration confirmation email
 const sendRegistrationEmail = async (email, fullName) => {
+    console.log(`\n==================================================\n[Email Notification] Registration email for ${fullName} (${email})\n==================================================\n`);
     try {
         const transporter = createTransporter();
 
@@ -90,6 +93,7 @@ const sendRegistrationEmail = async (email, fullName) => {
 
 // Send account status update email
 const sendStatusUpdateEmail = async (email, fullName, status) => {
+    console.log(`\n==================================================\n[Email Notification] Status update email for ${fullName} (${email}) -> Status: ${status}\n==================================================\n`);
     try {
         const transporter = createTransporter();
 
@@ -163,8 +167,105 @@ const sendStatusUpdateEmail = async (email, fullName, status) => {
     }
 };
 
+// Send notification to worker about a new job matching their skills
+const sendNewJobNotificationEmail = async (email, fullName, serviceRequest) => {
+    console.log(`\n==================================================\n[Email Notification] New matching job notification email for ${fullName} (${email}) -> Job: ${serviceRequest.serviceType}\n==================================================\n`);
+    try {
+        const transporter = createTransporter();
+
+        const mailOptions = {
+            from: `"Smart Service Platform" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: 'New Job Opportunity Matching Your Skills!',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+                    <h2 style="color: #007bff; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-top: 0;">🛠️ New Job Opportunity!</h2>
+                    <p>Dear ${fullName},</p>
+                    <p>A new job request has been posted on the Smart Service Platform that matches your registered skills:</p>
+                    
+                    <div style="background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                        <p style="margin: 5px 0;"><strong>Service Type:</strong> ${serviceRequest.serviceType}</p>
+                        <p style="margin: 5px 0;"><strong>Location:</strong> ${serviceRequest.location}</p>
+                        ${serviceRequest.budget ? `<p style="margin: 5px 0;"><strong>Budget:</strong> LKR ${serviceRequest.budget}</p>` : ''}
+                        <p style="margin: 5px 0;"><strong>Description:</strong> ${serviceRequest.description}</p>
+                        <p style="margin: 5px 0;"><strong>Date/Time:</strong> ${serviceRequest.date} at ${serviceRequest.time}</p>
+                    </div>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" 
+                           style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                            View Available Jobs & Bid
+                        </a>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px;">Log in to bid on this job and discuss details with the client via our chat feature.</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #999; font-size: 12px; text-align: center;">This is an automated message from Smart Service Platform, please do not reply.</p>
+                </div>
+            `,
+            text: `🛠️ New Job Opportunity!\n\nDear ${fullName},\n\nA new job matching your skills has been posted:\n- Service Type: ${serviceRequest.serviceType}\n- Location: ${serviceRequest.location}\n- Budget: ${serviceRequest.budget ? 'LKR ' + serviceRequest.budget : 'Not Specified'}\n- Description: ${serviceRequest.description}\n\nLog in to bid: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('New job notification email sent to:', email, info.messageId);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Error sending new job notification email:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+// Send notification to worker that their bid was rejected / job was filled
+const sendBidRejectedNotificationEmail = async (email, fullName, serviceRequest) => {
+    console.log(`\n==================================================\n[Email Notification] Bid rejection notification email for ${fullName} (${email}) -> Job: ${serviceRequest.serviceType}\n==================================================\n`);
+    try {
+        const transporter = createTransporter();
+
+        const mailOptions = {
+            from: `"Smart Service Platform" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: 'Job Request Update - Position Filled',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+                    <h2 style="color: #6c757d; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-top: 0;">Job Request Update</h2>
+                    <p>Dear ${fullName},</p>
+                    <p>Thank you for submitting a bid for the following job request:</p>
+                    
+                    <div style="background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                        <p style="margin: 5px 0;"><strong>Service Type:</strong> ${serviceRequest.serviceType}</p>
+                        <p style="margin: 5px 0;"><strong>Description:</strong> ${serviceRequest.description}</p>
+                    </div>
+
+                    <p>We wanted to let you know that the client has selected another worker for this task, and the position has now been filled.</p>
+                    <p>We appreciate your interest and encourage you to continue applying for other available opportunities on the platform that match your skills.</p>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" 
+                           style="background-color: #6c757d; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                            View Other Available Jobs
+                        </a>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #999; font-size: 12px; text-align: center;">This is an automated message from Smart Service Platform, please do not reply.</p>
+                </div>
+            `,
+            text: `Job Request Update\n\nDear ${fullName},\n\nThank you for bidding on the job request for "${serviceRequest.serviceType}". The client has selected another worker for this task, and the position has been filled.\n\nKeep looking for other jobs: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Bid rejection email sent to:', email, info.messageId);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Error sending bid rejection email:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
 module.exports = {
     sendOTPEmail,
     sendRegistrationEmail,
     sendStatusUpdateEmail,
+    sendNewJobNotificationEmail,
+    sendBidRejectedNotificationEmail,
 };

@@ -31,64 +31,68 @@ const queryClient = new QueryClient();
 
 import { ThemeProvider } from "@/components/theme-provider";
 
+import { LanguageProvider } from "@/contexts/LanguageContext";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AuthProvider>
-          <BrowserRouter
-            future={{
-              v7_startTransition: true,
-              v7_relativeSplatPath: true,
-            }}
-          >
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/worker-profile/:id" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
-              <Route path="/users" element={<ProtectedRoute requiredRole="admin"><AllUsers /></ProtectedRoute>} />
+      <LanguageProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AuthProvider>
+            <BrowserRouter
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              }}
+            >
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/worker-profile/:id" element={<ProtectedRoute><PublicProfile /></ProtectedRoute>} />
+                <Route path="/users" element={<ProtectedRoute requiredRole="admin"><AllUsers /></ProtectedRoute>} />
 
-              {/* Protected Routes */}
-              <Route element={<ProtectedRoute requiredRole="requester" />}>
-                <Route path="/requester/create-request" element={<CreateRequest />} />
-                <Route path="/requester/edit-request/:id" element={<EditRequest />} />
-                <Route path="/requester/requests" element={<MyRequests />} />
-                <Route path="/requester/messages" element={<Messages />} />
-                <Route path="/requester/workers" element={<FindWorkers />} />
-                <Route path="/requester/*" element={<RequesterDashboard />} />
-              </Route>
+                {/* Protected Routes */}
+                <Route element={<ProtectedRoute requiredRole="requester" />}>
+                  <Route path="/requester/create-request" element={<CreateRequest />} />
+                  <Route path="/requester/edit-request/:id" element={<EditRequest />} />
+                  <Route path="/requester/requests" element={<MyRequests />} />
+                  <Route path="/requester/messages" element={<Messages />} />
+                  <Route path="/requester/workers" element={<FindWorkers />} />
+                  <Route path="/requester/*" element={<RequesterDashboard />} />
+                </Route>
 
-              <Route element={<ProtectedRoute requiredRole="worker" />}>
-                <Route path="/worker/messages" element={<Messages />} />
-                <Route path="/worker/*" element={<WorkerDashboard />} />
-              </Route>
+                <Route element={<ProtectedRoute requiredRole="worker" />}>
+                  <Route path="/worker/messages" element={<Messages />} />
+                  <Route path="/worker/*" element={<WorkerDashboard />} />
+                </Route>
 
-              <Route element={<ProtectedRoute requiredRole="broker" />}>
-                <Route path="/broker/create-request" element={<CreateRequest />} />
-                <Route path="/broker/edit-request/:id" element={<EditRequest />} />
-                <Route path="/broker/requests" element={<MyRequests />} />
-                <Route path="/broker/messages" element={<Messages />} />
+                <Route element={<ProtectedRoute requiredRole="broker" />}>
+                  <Route path="/broker/create-request" element={<CreateRequest />} />
+                  <Route path="/broker/edit-request/:id" element={<EditRequest />} />
+                  <Route path="/broker/requests" element={<MyRequests />} />
+                  <Route path="/broker/messages" element={<Messages />} />
 
-                <Route path="/broker/*" element={<BrokerDashboard />} />
-              </Route>
+                  <Route path="/broker/*" element={<BrokerDashboard />} />
+                </Route>
 
-              <Route element={<ProtectedRoute requiredRole="admin" />}>
-                <Route path="/admin/logs" element={<ActivityLogs />} />
-                <Route path="/admin/*" element={<AdminDashboard />} />
-              </Route>
+                <Route element={<ProtectedRoute requiredRole="admin" />}>
+                  <Route path="/admin/logs" element={<ActivityLogs />} />
+                  <Route path="/admin/*" element={<AdminDashboard />} />
+                </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </LanguageProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
