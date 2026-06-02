@@ -31,10 +31,13 @@ interface Location {
     address?: string;
 }
 
+import { useLanguage } from "@/contexts/LanguageContext";
+
 const AddWorker = () => {
     const { user } = useAuth(); // Get current Broker user
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { language } = useLanguage();
 
     // ... existing code ...
 
@@ -190,6 +193,7 @@ const AddWorker = () => {
             data.append('phone', formData.phone);
             data.append('address', formData.address);
             data.append('addedBy', user?._id || ''); // Add this line
+            data.append('preferredLanguage', language);
 
             if (formData.location) {
                 data.append('location', JSON.stringify({

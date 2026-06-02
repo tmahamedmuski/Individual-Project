@@ -60,7 +60,7 @@ const createRequest = async (req, res) => {
                 console.log(`[ServiceController] Found ${matchedWorkers.length} matching workers for job type: ${serviceType}`);
                 
                 for (const worker of matchedWorkers) {
-                    sendNewJobNotificationEmail(worker.email, worker.fullName, request).catch(err => {
+                    sendNewJobNotificationEmail(worker.email, worker.fullName, request, worker.preferredLanguage || 'en').catch(err => {
                         console.error(`Failed to send job notification to ${worker.email}:`, err.message);
                     });
                 }

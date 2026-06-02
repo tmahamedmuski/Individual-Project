@@ -91,6 +91,11 @@ const userSchema = mongoose.Schema(
             type: Number,
             default: 0,
         },
+        preferredLanguage: {
+            type: String,
+            enum: ['en', 'si', 'ta'],
+            default: 'en',
+        },
     },
     {
         timestamps: true,

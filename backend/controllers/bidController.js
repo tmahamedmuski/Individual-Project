@@ -57,7 +57,7 @@ const acceptBid = asyncHandler(async (req, res) => {
     const { bidId } = req.params;
 
     // Find the bid
-    const bid = await Bid.findById(bidId).populate('serviceRequest');
+    const bid = await Bid.findById(bidId).populate('serviceRequest').populate('worker');
 
     if (!bid) {
         res.status(404);
@@ -77,14 +77,24 @@ const acceptBid = asyncHandler(async (req, res) => {
     await bid.save();
 
     // Update Service Request
-    serviceRequest.worker = bid.worker;
+    serviceRequest.worker = bid.worker._id || bid.worker;
     serviceRequest.status = 'in_progress';
     serviceRequest.budget = bid.amount; // Update budget to agreed amount
     await serviceRequest.save();
 
-    // Send automatic message to the accepted worker
+    // Send automatic message to the accepted worker in their preferred language
     const workerId = bid.worker._id || bid.worker;
-    const messageContent = `Your bid has been accepted. Please come to my place on ${serviceRequest.date} at ${serviceRequest.time} to complete the work.`;
+    const workerLanguage = bid.worker.preferredLanguage || 'en';
+    let messageContent;
+    
+    if (workerLanguage === 'si') {
+        messageContent = `ඔබගේ ලංසුව පිළිගෙන ඇත. කරුණාකර කාර්යය සම්පූර්ණ කිරීම සඳහා ${serviceRequest.date} දින ${serviceRequest.time} ට මගේ ස්ථානයට පැමිණෙන්න.`;
+    } else if (workerLanguage === 'ta') {
+        messageContent = `உங்களது ஏலம் ஏற்றுக்கொள்ளப்பட்டது. வேலையை முடிக்க தயவுசெய்து ${serviceRequest.date} அன்று ${serviceRequest.time} மணிக்கு எனது இடத்திற்கு வரவும்.`;
+    } else {
+        messageContent = `Your bid has been accepted. Please come to my place on ${serviceRequest.date} at ${serviceRequest.time} to complete the work.`;
+    }
+
     await Message.create({
         sender: req.user.id,
         receiver: workerId,
@@ -97,7 +107,7 @@ const acceptBid = asyncHandler(async (req, res) => {
         const otherBids = await Bid.find({
             serviceRequest: serviceRequest._id,
             _id: { $ne: bidId }
-        }).populate('worker', 'fullName email');
+        }).populate('worker', 'fullName email preferredLanguage');
 
         await Bid.updateMany(
             { serviceRequest: serviceRequest._id, _id: { $ne: bidId } },
@@ -109,7 +119,8 @@ const acceptBid = asyncHandler(async (req, res) => {
                 sendBidRejectedNotificationEmail(
                     otherBid.worker.email,
                     otherBid.worker.fullName,
-                    serviceRequest
+                    serviceRequest,
+                    otherBid.worker.preferredLanguage || 'en'
                 ).catch(err => {
                     console.error(`Failed to send rejection notification to ${otherBid.worker.email}:`, err.message);
                 });

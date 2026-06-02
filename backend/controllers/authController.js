@@ -16,7 +16,7 @@ const registerUser = async (req, res) => {
     console.log('[AuthController] Payload:', { email: req.body.email, role: req.body.role, nic: req.body.nic });
     try {
         // Parse JSON fields from req.body (multer adds them as strings)
-        let { fullName, email, password, role, phone, location, nic, skills, address } = req.body;
+        let { fullName, email, password, role, phone, location, nic, skills, address, preferredLanguage } = req.body;
 
         // If location is a string, parse it
         if (typeof location === 'string') {
@@ -124,13 +124,14 @@ const registerUser = async (req, res) => {
             gpLetters: gpLettersPaths,
             accountStatus: 'pending', // Explicitly set status
             addedBy: req.body.addedBy || null, // Capture addedBy if present
+            preferredLanguage: preferredLanguage || 'en',
         });
 
         console.log('User created with ID:', user._id);
 
         if (user) {
             try {
-                await sendRegistrationEmail(user.email, user.fullName);
+                await sendRegistrationEmail(user.email, user.fullName, user.preferredLanguage);
                 console.log('Registration email sent to:', user.email);
             } catch (emailError) {
                 console.error('Failed to send registration email:', emailError);
@@ -219,6 +220,7 @@ const loginUser = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 location: user.location,
+                preferredLanguage: user.preferredLanguage || 'en',
                 token: generateToken(user._id),
             });
         } else {
@@ -253,13 +255,14 @@ const updateProfile = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const { fullName, phone, location, profilePicture, skills } = req.body;
+        const { fullName, phone, location, profilePicture, skills, preferredLanguage } = req.body;
 
         if (fullName) user.fullName = fullName;
         if (phone) user.phone = phone;
         if (location) user.location = location;
         if (profilePicture !== undefined) user.profilePicture = profilePicture;
         if (skills !== undefined) user.skills = skills;
+        if (preferredLanguage) user.preferredLanguage = preferredLanguage;
 
         const updatedUser = await user.save();
         res.json({
@@ -271,6 +274,7 @@ const updateProfile = async (req, res) => {
             location: updatedUser.location,
             accountStatus: updatedUser.accountStatus,
             skills: updatedUser.skills,
+            preferredLanguage: updatedUser.preferredLanguage,
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -490,7 +494,7 @@ const forgotPassword = async (req, res) => {
 
         // Send OTP email
         try {
-            await sendOTPEmail(email, otp);
+            await sendOTPEmail(email, otp, user.preferredLanguage || 'en');
         } catch (emailError) {
             console.error('Email sending failed:', emailError);
             // Still return success to not reveal email existence

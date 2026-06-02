@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '@/lib/axios';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface User {
     profilePicture: any;
@@ -18,6 +19,7 @@ interface User {
         coordinates: number[];
         address: string;
     };
+    preferredLanguage?: string;
 }
 
 interface AuthContextType {
@@ -33,6 +35,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const { setLanguage } = useLanguage();
 
     useEffect(() => {
         checkUserLoggedIn();
@@ -44,6 +47,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
                 const { data } = await api.get('/auth/me'); // Ensure backend has this endpoint or similar
                 setUser(data);
+                if (data.preferredLanguage) {
+                    setLanguage(data.preferredLanguage as any);
+                }
             } catch (error) {
                 console.error("Session check failed:", error);
                 localStorage.removeItem('token');
@@ -61,7 +67,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (!data.user) {
                 const me = await api.get('/auth/me');
                 setUser(me.data);
+                if (me.data.preferredLanguage) {
+                    setLanguage(me.data.preferredLanguage as any);
+                }
                 return { success: true, role: me.data.role };
+            }
+            if (data.user && data.user.preferredLanguage) {
+                setLanguage(data.user.preferredLanguage as any);
             }
             return { success: true, role: data.user.role };
         } catch (error: any) {
@@ -87,6 +99,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 formData.append('phone', userData.phone);
                 formData.append('nic', userData.nic);
                 formData.append('address', userData.address || '');
+                if (userData.preferredLanguage) {
+                    formData.append('preferredLanguage', userData.preferredLanguage);
+                }
 
                 // Append location as JSON string
                 if (userData.location) {

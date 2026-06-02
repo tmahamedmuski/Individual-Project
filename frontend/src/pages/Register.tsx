@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
   const { toast } = useToast();
+  const { language, t } = useLanguage();
 
   const [isLoading, setIsLoading] = useState(false);
   const [showOtherSkill, setShowOtherSkill] = useState(false);
@@ -260,6 +262,7 @@ const Register = () => {
         nicPhoto: nicPhoto,
         workingPhotos: formData.role === "worker" ? workingPhotos : [],
         gpLetters: formData.role === "worker" ? gpLetters : [],
+        preferredLanguage: language,
       });
       toast({
         title: "Registration Successful",

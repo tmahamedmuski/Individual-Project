@@ -56,6 +56,19 @@ export function DashboardLayout({
   const location = useLocation();
   const { user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+
+  const changeLanguage = async (lang: "en" | "si" | "ta") => {
+    setLanguage(lang);
+    if (user) {
+      try {
+        await api.put("/auth/profile", { preferredLanguage: lang });
+        console.log("Updated preferred language on backend profile to:", lang);
+      } catch (err) {
+        console.error("Failed to update preferred language on backend profile:", err);
+      }
+    }
+  };
+
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
   const [jobRequestsCount, setJobRequestsCount] = useState<number>(0);
   const [myRequestsCount, setMyRequestsCount] = useState<number>(0);
@@ -249,13 +262,13 @@ export function DashboardLayout({
               <DropdownMenuContent align="end" className="w-36">
                 <DropdownMenuLabel>{t("Select Language")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setLanguage("en")} className={cn(language === "en" && "font-bold bg-accent")}>
+                <DropdownMenuItem onClick={() => changeLanguage("en")} className={cn(language === "en" && "font-bold bg-accent")}>
                   English
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage("si")} className={cn(language === "si" && "font-bold bg-accent")}>
+                <DropdownMenuItem onClick={() => changeLanguage("si")} className={cn(language === "si" && "font-bold bg-accent")}>
                   සිංහල (Sinhala)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage("ta")} className={cn(language === "ta" && "font-bold bg-accent")}>
+                <DropdownMenuItem onClick={() => changeLanguage("ta")} className={cn(language === "ta" && "font-bold bg-accent")}>
                   தமிழ் (Tamil)
                 </DropdownMenuItem>
               </DropdownMenuContent>

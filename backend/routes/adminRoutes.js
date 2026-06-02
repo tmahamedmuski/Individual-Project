@@ -72,7 +72,7 @@ router.put('/users/:id/status', protect, adminOnly, async (req, res) => {
             // Send email notification if status changed
             if (oldStatus !== status) {
                 try {
-                    await sendStatusUpdateEmail(user.email, user.fullName, status);
+                    await sendStatusUpdateEmail(user.email, user.fullName, status, user.preferredLanguage || 'en');
                     console.log(`Status update email sent to ${user.email} for status: ${status}`);
                 } catch (emailError) {
                     console.error('Failed to send status update email:', emailError);
@@ -144,7 +144,7 @@ router.put('/approve/:id', protect, adminOnly, async (req, res) => {
             // Send email notification if status changed
             if (oldStatus !== 'approved') {
                 try {
-                    await sendStatusUpdateEmail(user.email, user.fullName, 'approved');
+                    await sendStatusUpdateEmail(user.email, user.fullName, 'approved', user.preferredLanguage || 'en');
                     console.log(`Approval email sent to ${user.email}`);
                 } catch (emailError) {
                     console.error('Failed to send approval email:', emailError);
