@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,17 +27,19 @@ import {
   X,
   Upload
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, User } from "@/contexts/AuthContext";
 import api from "@/lib/axios";
 import { useToast } from "@/hooks/use-toast";
 import { adminNavItems, workerNavItems, requesterNavItems, brokerNavItems } from "@/config/navigation";
 import { Loader2 } from "lucide-react";
 import { getImageUrl } from "@/lib/imageUtils";
 
+const PREDEFINED_SKILLS = ["Plumber", "Electrician", "Cleaner", "Chef", "Carpenter", "Mason", "Gardener"];
+
 const Profile = () => {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingProfile, setUploadingProfile] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -52,13 +54,7 @@ const Profile = () => {
   const [otherSkill, setOtherSkill] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const PREDEFINED_SKILLS = ["Plumber", "Electrician", "Cleaner", "Chef", "Carpenter", "Mason", "Gardener"];
-
-  useEffect(() => {
-    fetchUserDetails();
-  }, []);
-
-  const fetchUserDetails = async () => {
+  const fetchUserDetails = useCallback(async () => {
     try {
       const { data } = await api.get('/auth/me');
       setUser(data);
@@ -83,6 +79,30 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUserDetails();
+  }, [fetchUserDetails]);
+
+  const startEditing = () => {
+    if (!user) return;
+    setEditForm({
+      fullName: user.fullName || "",
+      phone: user.phone || "",
+      address: user.location?.address || "",
+      profilePicture: user.profilePicture || "",
+      skills: user.skills || [],
+    });
+    const userSkills = user.skills || [];
+    const hasOther = userSkills.length > 0 && !PREDEFINED_SKILLS.includes(userSkills[0]);
+    setShowOtherSkill(hasOther);
+    setOtherSkill(hasOther ? userSkills[0] : "");
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
   };
 
   const handleUpdateProfile = async () => {
@@ -100,16 +120,17 @@ const Profile = () => {
           coordinates: user.location?.coordinates || [79.8612, 6.9271] // Default to Colombo if none
         }
       });
-      setUser(data);
+      setUser({ ...user, ...data });
       setIsEditing(false);
       toast({
         title: "Success",
         description: "Profile updated successfully",
       });
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to update profile",
+        description: err.response?.data?.message || "Failed to update profile",
         variant: "destructive"
       });
     }
@@ -146,15 +167,17 @@ const Profile = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      setUser({ ...user, profilePicture: data.profilePicture });
+      setUser(prev => prev ? { ...prev, profilePicture: data.profilePicture } : null);
+      setEditForm(prev => ({ ...prev, profilePicture: data.profilePicture }));
       toast({
         title: "Success",
         description: "Profile picture uploaded successfully",
       });
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to upload profile picture",
+        description: err.response?.data?.message || "Failed to upload profile picture",
         variant: "destructive"
       });
     } finally {
@@ -170,15 +193,17 @@ const Profile = () => {
 
     try {
       await api.delete('/auth/profile-picture');
-      setUser({ ...user, profilePicture: null });
+      setUser(prev => prev ? { ...prev, profilePicture: null } : null);
+      setEditForm(prev => ({ ...prev, profilePicture: "" }));
       toast({
         title: "Success",
         description: "Profile picture deleted successfully",
       });
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to delete profile picture",
+        description: err.response?.data?.message || "Failed to delete profile picture",
         variant: "destructive"
       });
     }
@@ -199,7 +224,7 @@ const Profile = () => {
     return (
       <DashboardLayout
         navItems={getNavItems()}
-        role={currentUser?.role as any || 'requester'}
+        role={(currentUser?.role as 'admin' | 'worker' | 'requester' | 'broker') || 'requester'}
         userName={currentUser?.fullName || "User"}
         userEmail={currentUser?.email || "user@example.com"}
       >
@@ -214,7 +239,7 @@ const Profile = () => {
     return (
       <DashboardLayout
         navItems={getNavItems()}
-        role={currentUser?.role as any || 'requester'}
+        role={(currentUser?.role as 'admin' | 'worker' | 'requester' | 'broker') || 'requester'}
         userName={currentUser?.fullName || "User"}
         userEmail={currentUser?.email || "user@example.com"}
       >
@@ -228,7 +253,7 @@ const Profile = () => {
   return (
     <DashboardLayout
       navItems={getNavItems()}
-      role={currentUser?.role as any || 'requester'}
+      role={(currentUser?.role as 'admin' | 'worker' | 'requester' | 'broker') || 'requester'}
       userName={currentUser?.fullName || "User"}
       userEmail={currentUser?.email || "user@example.com"}
     >
@@ -301,13 +326,24 @@ const Profile = () => {
                 <CardTitle>Personal Information</CardTitle>
                 <CardDescription>Your basic account details</CardDescription>
               </div>
-              <Button
-                variant={isEditing ? "default" : "outline"}
-                size="sm"
-                onClick={() => isEditing ? handleUpdateProfile() : setIsEditing(true)}
-              >
-                {isEditing ? 'Save Changes' : 'Edit Profile'}
-              </Button>
+              <div className="flex gap-2">
+                {isEditing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={cancelEditing}
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button
+                  variant={isEditing ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => isEditing ? handleUpdateProfile() : startEditing()}
+                >
+                  {isEditing ? 'Save Changes' : 'Edit Profile'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">

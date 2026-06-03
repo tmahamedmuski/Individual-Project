@@ -265,17 +265,8 @@ const updateProfile = async (req, res) => {
         if (preferredLanguage) user.preferredLanguage = preferredLanguage;
 
         const updatedUser = await user.save();
-        res.json({
-            _id: updatedUser._id,
-            fullName: updatedUser.fullName,
-            email: updatedUser.email,
-            role: updatedUser.role,
-            phone: updatedUser.phone,
-            location: updatedUser.location,
-            accountStatus: updatedUser.accountStatus,
-            skills: updatedUser.skills,
-            preferredLanguage: updatedUser.preferredLanguage,
-        });
+        const userResponse = await User.findById(updatedUser._id).select('-password');
+        res.json(userResponse);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
