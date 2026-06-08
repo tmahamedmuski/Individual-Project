@@ -11,21 +11,27 @@ import {
     Settings,
 } from "lucide-react";
 import { requesterNavItems } from "@/config/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, User } from "@/contexts/AuthContext";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "@/lib/axios";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+
+interface Worker extends User {
+    distance?: number;
+}
 
 export default function FindWorkers() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { toast } = useToast();
+    const { t } = useLanguage();
 
     const initialNearMe = searchParams.get('view') !== 'all';
     const [isNearMe, setIsNearMe] = useState(initialNearMe);
-    const [workers, setWorkers] = useState<any[]>([]);
+    const [workers, setWorkers] = useState<Worker[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(true);
 
@@ -45,8 +51,8 @@ export default function FindWorkers() {
             } catch (error) {
                 console.error("Error fetching workers:", error);
                 toast({
-                    title: "Error",
-                    description: "Failed to load workers.",
+                    title: t("Error"),
+                    description: t("Failed to load workers."),
                     variant: "destructive",
                 });
             } finally {
@@ -63,18 +69,18 @@ export default function FindWorkers() {
     };
 
     // Filter and group workers dynamically in-memory based on search query
-    const filteredWorkers = workers.filter((worker: any) => {
+    const filteredWorkers = workers.filter((worker) => {
         const query = searchQuery.toLowerCase().trim();
         if (!query) return true;
         
         const matchesName = worker.fullName?.toLowerCase().includes(query);
-        const matchesSkill = worker.skills && worker.skills.some((skill: string) => 
+        const matchesSkill = worker.skills && worker.skills.some((skill) => 
             skill.toLowerCase().includes(query)
         );
         return matchesName || matchesSkill;
     });
 
-    const groups: { [key: string]: any[] } = {
+    const groups: Record<string, Worker[]> = {
         "Within 1km": [],
         "Within 2km": [],
         "Within 5km": [],
@@ -82,7 +88,7 @@ export default function FindWorkers() {
         "Other Available Workers": []
     };
 
-    filteredWorkers.forEach((worker: any) => {
+    filteredWorkers.forEach((worker) => {
         if (worker.distance) {
             const distKm = worker.distance / 1000;
             if (distKm <= 1) groups["Within 1km"].push(worker);
@@ -96,10 +102,10 @@ export default function FindWorkers() {
     });
 
     // Filter out empty groups
-    const workerGroups = Object.keys(groups).reduce((acc: Record<string, any[]>, key) => {
+    const workerGroups = Object.keys(groups).reduce((acc: Record<string, Worker[]>, key) => {
         if (groups[key].length > 0) acc[key] = groups[key];
         return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, Worker[]>);
 
     return (
         <DashboardLayout
@@ -114,10 +120,10 @@ export default function FindWorkers() {
                     <div>
                         <h1 className="text-2xl font-bold flex items-center gap-2">
                             <Users className="h-6 w-6 text-primary" />
-                            Find Workers
+                            {t("Find Workers")}
                         </h1>
                         <p className="text-muted-foreground">
-                            Search and connect with skilled workers in your area
+                            {t("Search and connect with skilled workers in your area")}
                         </p>
                     </div>
                 </div>
@@ -127,7 +133,7 @@ export default function FindWorkers() {
                     <div className="relative flex-1 w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            placeholder="Search workers by skill..." 
+                            placeholder={t("Search workers by skill...")} 
                             className="pl-10" 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -141,7 +147,7 @@ export default function FindWorkers() {
                             className="gap-2"
                         >
                             <MapPin className="h-4 w-4" />
-                            Near Me
+                            {t("Near Me")}
                         </Button>
                         <Button
                             variant={!isNearMe ? "secondary" : "ghost"}
@@ -150,7 +156,7 @@ export default function FindWorkers() {
                             className="gap-2"
                         >
                             <Search className="h-4 w-4" />
-                            All Workers
+                            {t("All Workers")}
                         </Button>
                     </div>
                 </div>
@@ -166,27 +172,27 @@ export default function FindWorkers() {
                     ) : Object.keys(workerGroups).length === 0 ? (
                         <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/5">
                             <MapPin className="h-16 w-16 mx-auto mb-6 opacity-20 text-primary" />
-                            <h3 className="text-xl font-semibold text-foreground mb-2">No Nearby Workers Found</h3>
+                            <h3 className="text-xl font-semibold text-foreground mb-2">{t("No Nearby Workers Found")}</h3>
                             <p className="max-w-md mx-auto mb-8">
                                 {isNearMe
-                                    ? "We couldn't find any workers near your current location. Try increasing the search radius or checking 'All Workers'."
-                                    : "No workers match your search criteria. Try a different skill or keyword."}
+                                    ? t("We couldn't find any workers near your current location. Try increasing the search radius or checking 'All Workers'.")
+                                    : t("No workers match your search criteria. Try a different skill or keyword.")}
                             </p>
                             {isNearMe && !user?.location?.coordinates && (
                                 <div className="space-y-4">
                                     <p className="text-sm font-medium text-warning flex items-center justify-center gap-2">
                                         <AlertTriangle className="h-4 w-4" />
-                                        Your location is not set
+                                        {t("Your location is not set")}
                                     </p>
                                     <Button onClick={() => navigate('/profile')} className="gap-2">
                                         <Settings className="h-4 w-4" />
-                                        Add Address in Profile
+                                        {t("Add Address in Profile")}
                                     </Button>
                                 </div>
                             )}
                             <div className="flex justify-center gap-4 mt-4">
                                 <Button variant="outline" onClick={() => toggleView(false)}>
-                                    View All Workers
+                                    {t("View All Workers")}
                                 </Button>
                             </div>
                         </div>
@@ -194,9 +200,9 @@ export default function FindWorkers() {
                         Object.entries(workerGroups).map(([groupName, groupWorkers]) => (
                             <div key={groupName} className="space-y-4">
                                 <div className="flex items-center gap-2">
-                                    <h2 className="text-lg font-bold">{groupName}</h2>
+                                    <h2 className="text-lg font-bold">{t(groupName)}</h2>
                                     <div className="h-px flex-1 bg-border" />
-                                    <Badge variant="secondary">{groupWorkers.length} available</Badge>
+                                    <Badge variant="secondary">{groupWorkers.length} {t("available")}</Badge>
                                 </div>
                                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {groupWorkers.map((worker) => (

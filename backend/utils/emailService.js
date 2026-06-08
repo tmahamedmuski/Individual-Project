@@ -401,10 +401,95 @@ const sendBidRejectedNotificationEmail = async (email, fullName, serviceRequest,
     }
 };
 
+// Send notification to worker that a job request was updated
+const sendJobUpdatedNotificationEmail = async (email, fullName, serviceRequest, language = 'en') => {
+    console.log(`\n==================================================\n[Email Notification] Job update notification email for ${fullName} (${email}) -> Job: ${serviceRequest.serviceType} (Language: ${language})\n==================================================\n`);
+    try {
+        const transporter = createTransporter();
+
+        let subject, title, bodyText, labelService, labelLoc, labelBudget, labelDesc, labelDateTime, btnText, footerText;
+        if (language === 'si') {
+            subject = 'යාවත්කාලීන කරන ලද රැකියා ඉල්ලීමක්!';
+            title = '🔄 රැකියා ඉල්ලීම යාවත්කාලීන කර ඇත!';
+            bodyText = `හිතවත් ${fullName}, ඔබ සම්බන්ධ වූ/ලංසු තැබූ පහත සඳහන් රැකියා ඉල්ලීම සේවාලාභියා විසින් යාවත්කාලීන කර ඇත:`;
+            labelService = 'සේවා වර්ගය';
+            labelLoc = 'ස්ථානය';
+            labelBudget = 'අයවැය';
+            labelDesc = 'විස්තරය';
+            labelDateTime = 'දිනය/වේලාව';
+            btnText = 'යාවත්කාලීන විස්තර බලන්න';
+            footerText = 'නව විස්තර පරීක්ෂා කිරීමට සහ සේවාලාභියා සමඟ චැට් මගින් සාකච්ඡා කිරීමට පද්ධතියට ලොග් වන්න.';
+        } else if (language === 'ta') {
+            subject = 'வேலைக் கோரிக்கை புதுப்பிக்கப்பட்டுள்ளது!';
+            title = '🔄 வேலைக் கோரிக்கை புதுப்பிக்கப்பட்டது!';
+            bodyText = `அன்பான ${fullName}, நீங்கள் ஏலம் கேட்ட/நியமிக்கப்பட்ட பின்வரும் வேலைக் கோரிக்கை வாடிக்கையாளரால் புதுப்பிக்கப்பட்டுள்ளது:`;
+            labelService = 'சேவை வகை';
+            labelLoc = 'இருப்பிடம்';
+            labelBudget = 'வரவுசெலவுத் திட்டம்';
+            labelDesc = 'விளக்கம்';
+            labelDateTime = 'தேதி/நேரம்';
+            btnText = 'புதுப்பிக்கப்பட்ட விவரங்களைப் பார்க்கவும்';
+            footerText = 'புதிய விவரங்களைச் சரிபார்க்கவும், வாடிக்கையாளருடன் அரட்டை அடிக்கவும் உள்நுழையவும்.';
+        } else {
+            subject = 'Job Request Updated!';
+            title = '🔄 Job Request Updated!';
+            bodyText = `Dear ${fullName},\n\nA job request you bidded on or are assigned to has been updated by the client:`;
+            labelService = 'Service Type';
+            labelLoc = 'Location';
+            labelBudget = 'Budget';
+            labelDesc = 'Description';
+            labelDateTime = 'Date/Time';
+            btnText = 'View Updated Details';
+            footerText = 'Log in to view the new details and communicate with the client via our chat feature.';
+        }
+
+        const mailOptions = {
+            from: `"Smart Service Platform" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: subject,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px;">
+                    <h2 style="color: #28a745; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-top: 0;">${title}</h2>
+                    <p>Dear ${fullName},</p>
+                    <p>${bodyText}</p>
+                    
+                    <div style="background-color: #f4fdf6; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                        <p style="margin: 5px 0;"><strong>${labelService}:</strong> ${serviceRequest.serviceType}</p>
+                        <p style="margin: 5px 0;"><strong>${labelLoc}:</strong> ${serviceRequest.location}</p>
+                        ${serviceRequest.budget ? `<p style="margin: 5px 0;"><strong>${labelBudget}:</strong> LKR ${serviceRequest.budget}</p>` : ''}
+                        <p style="margin: 5px 0;"><strong>${labelDesc}:</strong> ${serviceRequest.description}</p>
+                        <p style="margin: 5px 0;"><strong>${labelDateTime}:</strong> ${serviceRequest.date} at ${serviceRequest.time}</p>
+                    </div>
+
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" 
+                           style="background-color: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                            ${btnText}
+                        </a>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px;">${footerText}</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="color: #999; font-size: 12px; text-align: center;">This is an automated message from Smart Service Platform, please do not reply.</p>
+                </div>
+            `,
+            text: `${title}\n\nDear ${fullName},\n\n${bodyText}\n- ${labelService}: ${serviceRequest.serviceType}\n- ${labelLoc}: ${serviceRequest.location}\n- ${labelBudget}: ${serviceRequest.budget ? 'LKR ' + serviceRequest.budget : 'N/A'}\n- ${labelDesc}: ${serviceRequest.description}\n\nLog in: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Job update notification email sent to:', email, info.messageId);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Error sending job update notification email:', error.message);
+        return { success: false, error: error.message };
+    }
+};
+
 module.exports = {
     sendOTPEmail,
     sendRegistrationEmail,
     sendStatusUpdateEmail,
     sendNewJobNotificationEmail,
     sendBidRejectedNotificationEmail,
+    sendJobUpdatedNotificationEmail,
 };

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -14,6 +15,7 @@ const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { t } = useLanguage();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,8 +26,8 @@ const Login = () => {
 
             if (result.success) {
                 toast({
-                    title: "Welcome back!",
-                    description: "Login successful.",
+                    title: t("Welcome back!"),
+                    description: t("Login successful."),
                 });
 
                 // Role-based redirection
@@ -47,15 +49,15 @@ const Login = () => {
                 }
             } else {
                 toast({
-                    title: "Login Failed",
-                    description: result.message || "Invalid credentials.",
+                    title: t("Login Failed"),
+                    description: result.message || t("Invalid credentials."),
                     variant: "destructive",
                 });
             }
         } catch (error) {
             toast({
-                title: "Error",
-                description: "An unexpected error occurred.",
+                title: t("Error"),
+                description: t("An unexpected error occurred."),
                 variant: "destructive",
             });
         } finally {
@@ -67,16 +69,16 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md shadow-lg border-border/40 bg-card/50 backdrop-blur-sm">
                 <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl font-bold font-display text-center">Welcome Back</CardTitle>
+                    <CardTitle className="text-2xl font-bold font-display text-center">{t("Welcome Back")}</CardTitle>
                     <CardDescription className="text-center">
-                        Enter your email to sign in to your account
+                        {t("Enter your email to sign in to your account")}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <input type="text" name="username" autoComplete="username" style={{ display: 'none' }} tabIndex={-1} />
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">{t("Email")}</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -88,7 +90,7 @@ const Login = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">{t("Password")}</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -103,20 +105,20 @@ const Login = () => {
                                 to="/forgot-password"
                                 className="text-sm font-medium text-primary hover:underline bg-background px-1"
                             >
-                                Forgot password?
+                                {t("Forgot password?")}
                             </Link>
                         </div>
-
+ 
                         <Button className="w-full" type="submit" disabled={isLoading}>
-                            {isLoading ? "Signing in..." : "Sign In"}
+                            {isLoading ? t("Signing in...") : t("Sign In")}
                         </Button>
                     </form>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4 text-center">
                     <div className="text-sm text-muted-foreground">
-                        Don't have an account?{" "}
+                        {t("Don't have an account?")}{" "}
                         <Link to="/register" className="text-primary hover:underline font-medium">
-                            Sign up
+                            {t("Sign up")}
                         </Link>
                     </div>
                 </CardFooter>

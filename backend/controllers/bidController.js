@@ -3,6 +3,7 @@ const Bid = require('../models/Bid');
 const ServiceRequest = require('../models/ServiceRequest');
 const Message = require('../models/Message');
 const { sendBidRejectedNotificationEmail } = require('../utils/emailService');
+const { sendBidRejectedSMS } = require('../utils/smsService');
 
 // @desc    Place a bid
 // @route   POST /api/bids
@@ -107,7 +108,7 @@ const acceptBid = asyncHandler(async (req, res) => {
         const otherBids = await Bid.find({
             serviceRequest: serviceRequest._id,
             _id: { $ne: bidId }
-        }).populate('worker', 'fullName email preferredLanguage');
+        }).populate('worker', 'fullName email phone preferredLanguage');
 
         await Bid.updateMany(
             { serviceRequest: serviceRequest._id, _id: { $ne: bidId } },
@@ -123,6 +124,16 @@ const acceptBid = asyncHandler(async (req, res) => {
                     otherBid.worker.preferredLanguage || 'en'
                 ).catch(err => {
                     console.error(`Failed to send rejection notification to ${otherBid.worker.email}:`, err.message);
+                });
+            }
+            if (otherBid.worker && otherBid.worker.phone) {
+                sendBidRejectedSMS(
+                    otherBid.worker.phone,
+                    otherBid.worker.fullName,
+                    serviceRequest,
+                    otherBid.worker.preferredLanguage || 'en'
+                ).catch(err => {
+                    console.error(`Failed to send rejection SMS notification to ${otherBid.worker.phone}:`, err.message);
                 });
             }
         }

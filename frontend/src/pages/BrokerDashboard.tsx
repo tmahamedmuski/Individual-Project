@@ -40,6 +40,7 @@ import api from "@/lib/axios";
 import { JobCard } from "@/components/dashboard/JobCard";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 
 
@@ -69,6 +70,74 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { JobDetailsModal } from "@/components/JobDetailsModal";
 import { reviewService } from "@/api/reviewService";
 
+interface ManagedWorker {
+  id: string;
+  name: string;
+  profilePicture?: string | null;
+  skills: string[];
+  status: string;
+  activeJobs: number;
+  rating: number;
+  earnings: string;
+}
+
+export interface Job {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  date: string;
+  time: string;
+  duration?: string;
+  budget: number;
+  partsRequired?: string;
+  status: "pending" | "accepted" | "in-progress" | "in_progress" | "completed" | "cancelled";
+  worker?: {
+    id: string;
+    _id?: string;
+    name: string;
+    rating: number;
+  };
+  requester?: {
+    id?: string;
+    name: string;
+    rating: number;
+    phone?: string;
+  };
+}
+
+interface ApiWorker {
+  _id: string;
+  fullName: string;
+  profilePicture?: string | null;
+  skills?: string[];
+  accountStatus: string;
+  rating?: number;
+}
+
+interface ApiRequest {
+  _id: string;
+  serviceType: string;
+  description: string;
+  location: string;
+  date: string;
+  time: string;
+  budget: number;
+  partsRequired?: string;
+  status: string;
+  requester?: {
+    _id: string;
+    fullName: string;
+    averageRating?: number;
+  };
+  worker?: {
+    _id: string;
+    fullName: string;
+    rating?: number;
+  };
+  phoneNumber?: string;
+}
+
 const BROKER_TABS = ["overview", "requests", "marketplace", "workers-jobs", "all-platform-requests"] as const;
 
 export default function BrokerDashboard() {
@@ -76,21 +145,22 @@ export default function BrokerDashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useLanguage();
   const tabFromUrl = searchParams.get("tab");
-  const activeTab = BROKER_TABS.includes(tabFromUrl as any) ? tabFromUrl : "overview";
+  const activeTab = (tabFromUrl && (BROKER_TABS as readonly string[]).includes(tabFromUrl)) ? (tabFromUrl as typeof BROKER_TABS[number]) : "overview";
 
-  const [myRequests, setMyRequests] = useState<any[]>([]);
-  const [availableJobs, setAvailableJobs] = useState<any[]>([]);
-  const [managedWorkersJobs, setManagedWorkersJobs] = useState<any[]>([]);
-  const [allPlatformRequests, setAllPlatformRequests] = useState<any[]>([]);
-  const [managedWorkers, setManagedWorkers] = useState<any[]>([]);
+  const [myRequests, setMyRequests] = useState<Job[]>([]);
+  const [availableJobs, setAvailableJobs] = useState<Job[]>([]);
+  const [managedWorkersJobs, setManagedWorkersJobs] = useState<Job[]>([]);
+  const [allPlatformRequests, setAllPlatformRequests] = useState<Job[]>([]);
+  const [managedWorkers, setManagedWorkers] = useState<ManagedWorker[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
   const [selectedJobForBid, setSelectedJobForBid] = useState<{ id: string, title: string } | null>(null);
 
   // Job Details Modal State
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [selectedJobDetails, setSelectedJobDetails] = useState<any>(null);
+  const [selectedJobDetails, setSelectedJobDetails] = useState<Job | null>(null);
 
   // Review Modal State
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -100,7 +170,7 @@ export default function BrokerDashboard() {
   const [isBidListOpen, setIsBidListOpen] = useState(false);
   const [selectedJobForBids, setSelectedJobForBids] = useState<{ id: string, title: string } | null>(null);
 
-  const handleBid = (job: any) => {
+  const handleBid = (job: Job) => {
     setSelectedJobForBid({ id: job.id, title: job.title });
     setIsBidDialogOpen(true);
   };
@@ -117,14 +187,15 @@ export default function BrokerDashboard() {
       });
 
       toast({
-        title: "Review Submitted",
-        description: "Thank you for your feedback!",
+        title: t("Review Submitted"),
+        description: t("Thank you for your feedback!"),
       });
-    } catch (error: any) {
-      console.error("Error submitting review:", error);
-      const errorMessage = error.response?.data?.message || "Failed to submit review.";
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      const error = err as { response?: { data?: { message?: string } } };
+      const errorMessage = error.response?.data?.message || t("Failed to submit review.");
       toast({
-        title: "Error",
+        title: t("Error"),
         description: errorMessage,
         variant: "destructive",
       });
@@ -137,7 +208,7 @@ export default function BrokerDashboard() {
     const fetchManagedUsers = async () => {
       try {
         const { data } = await api.get('/auth/managed-users');
-        const formattedWorkers = data.map((worker: any) => ({
+        const formattedWorkers = data.map((worker: ApiWorker) => ({
           id: worker._id,
           name: worker.fullName,
           profilePicture: worker.profilePicture,
@@ -160,7 +231,7 @@ export default function BrokerDashboard() {
     const fetchMyRequests = async () => {
       try {
         const { data } = await api.get('/services/my');
-        const formattedRequests = data.map((req: any) => ({
+        const formattedRequests = data.map((req: ApiRequest) => ({
           id: req._id,
           title: req.serviceType,
           description: req.description,
@@ -187,7 +258,7 @@ export default function BrokerDashboard() {
     const fetchAvailableJobs = async () => {
       try {
         const { data } = await api.get('/services/available');
-        const formattedJobs = data.map((job: any) => ({
+        const formattedJobs = data.map((job: ApiRequest) => ({
           id: job._id,
           title: job.serviceType,
           description: job.description,
@@ -220,7 +291,7 @@ export default function BrokerDashboard() {
     const fetchManagedWorkersJobs = async () => {
       try {
         const { data } = await api.get('/services/broker/managed-jobs');
-        const formatted = data.map((job: any) => ({
+        const formatted = data.map((job: ApiRequest) => ({
           id: job._id,
           title: job.serviceType,
           description: job.description,
@@ -251,7 +322,7 @@ export default function BrokerDashboard() {
     const fetchAllPlatformRequests = async () => {
       try {
         const { data } = await api.get('/services/broker/all-requests');
-        const formatted = data.map((job: any) => ({
+        const formatted = data.map((job: ApiRequest) => ({
           id: job._id,
           title: job.serviceType,
           description: job.description,
@@ -288,15 +359,15 @@ export default function BrokerDashboard() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Broker Dashboard</h1>
+            <h1 className="text-2xl font-bold">{t("Broker Dashboard")}</h1>
             <p className="text-muted-foreground">
-              Same as Worker and Requester: view work (jobs) and works (requests). Manage workers, post requests, and find jobs.
+              {t("Same as Worker and Requester: view work (jobs) and works (requests). Manage workers, post requests, and find jobs.")}
             </p>
           </div>
           <div className="flex gap-2">
             <Button className="w-fit" variant="outline" onClick={() => navigate('/broker/create-request')}>
               <Plus className="h-4 w-4 mr-2" />
-              Post Request
+              {t("Post Request")}
             </Button>
 
           </div>
@@ -305,25 +376,25 @@ export default function BrokerDashboard() {
         {/* Stats Row - Mixed Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Managed Workers"
+            title={t("Managed Workers")}
             value={managedWorkers.length}
             icon={Users}
             variant="broker"
           />
           <StatCard
-            title="Active Requests"
+            title={t("Active Requests")}
             value={myRequests.filter(r => r.status === 'pending' || r.status === 'in_progress').length}
             icon={Clock}
             variant="requester"
           />
           <StatCard
-            title="Market Opps"
+            title={t("Market Opps")}
             value={availableJobs.length}
             icon={Briefcase}
             variant="worker"
           />
           <StatCard
-            title="Total Earnings"
+            title={t("Total Earnings")}
             value="Rs. 150k"
             icon={CheckCircle}
             variant="broker"
@@ -337,11 +408,11 @@ export default function BrokerDashboard() {
           className="space-y-4"
         >
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="requests">My Requests (Works)</TabsTrigger>
-            <TabsTrigger value="marketplace">All Available Jobs</TabsTrigger>
-            <TabsTrigger value="workers-jobs">My Workers' Jobs (Work)</TabsTrigger>
-            <TabsTrigger value="all-platform-requests">All Platform Requests</TabsTrigger>
+            <TabsTrigger value="overview">{t("Overview")}</TabsTrigger>
+            <TabsTrigger value="requests">{t("My Requests (Works)")}</TabsTrigger>
+            <TabsTrigger value="marketplace">{t("All Available Jobs")}</TabsTrigger>
+            <TabsTrigger value="workers-jobs">{t("My Workers' Jobs (Work)")}</TabsTrigger>
+            <TabsTrigger value="all-platform-requests">{t("All Platform Requests")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -350,21 +421,21 @@ export default function BrokerDashboard() {
               <div className="lg:col-span-2">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Managed Workers</CardTitle>
+                    <CardTitle>{t("Managed Workers")}</CardTitle>
                     <div className="relative w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input placeholder="Search workers..." className="pl-10 h-9" />
+                      <Input placeholder={t("Search workers...")} className="pl-10 h-9" />
                     </div>
                   </CardHeader>
                   <CardContent>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Worker</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Active Jobs</TableHead>
-                          <TableHead>Rating</TableHead>
-                          <TableHead>Earnings</TableHead>
+                          <TableHead>{t("Worker")}</TableHead>
+                          <TableHead>{t("Status")}</TableHead>
+                          <TableHead>{t("Active Jobs")}</TableHead>
+                          <TableHead>{t("Rating")}</TableHead>
+                          <TableHead>{t("Earnings")}</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -387,7 +458,7 @@ export default function BrokerDashboard() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>
+                             <TableCell>
                               <Badge
                                 variant="outline"
                                 className={
@@ -396,7 +467,7 @@ export default function BrokerDashboard() {
                                     : "bg-warning/10 text-warning border-warning/20"
                                 }
                               >
-                                {worker.status === "verified" ? "Verified" : "Pending"}
+                                {worker.status === "verified" ? t("Verified") : t("Pending")}
                               </Badge>
                             </TableCell>
                             <TableCell>{worker.activeJobs}</TableCell>
@@ -421,11 +492,11 @@ export default function BrokerDashboard() {
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem>
                                     <Eye className="h-4 w-4 mr-2" />
-                                    View Profile
+                                    {t("View Profile")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem>
                                     <Plus className="h-4 w-4 mr-2" />
-                                    Apply for Job
+                                    {t("Apply for Job")}
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -441,13 +512,13 @@ export default function BrokerDashboard() {
               {/* Recent Applications */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Recent Applications</CardTitle>
+                  <CardTitle className="text-base">{t("Recent Applications")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {pendingApplications.map((app) => (
                     <div key={app.id} className="p-3 rounded-lg bg-muted/50 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{app.job}</span>
+                        <span className="font-medium text-sm">{t(app.job)}</span>
                         <Badge
                           variant="outline"
                           className={
@@ -456,20 +527,20 @@ export default function BrokerDashboard() {
                               : "bg-warning/10 text-warning border-warning/20"
                           }
                         >
-                          {app.status}
+                          {t(app.status)}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Worker: {app.worker}
+                        {t("Worker")}: {app.worker}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Client: {app.requester}
+                        {t("Client")}: {app.requester}
                       </p>
                       <p className="text-xs text-muted-foreground">{app.date}</p>
                     </div>
                   ))}
                   <Button variant="outline" size="sm" className="w-full">
-                    View All Applications
+                    {t("View All Applications")}
                   </Button>
                 </CardContent>
               </Card>
@@ -478,22 +549,22 @@ export default function BrokerDashboard() {
 
           <TabsContent value="requests" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">My Requests (Works — same as Requester view)</h2>
+              <h2 className="text-lg font-semibold">{t("My Requests (Works)")}</h2>
               <Button onClick={() => navigate('/broker/create-request')}>
                 <Plus className="h-4 w-4 mr-2" />
-                New Request
+                {t("New Request")}
               </Button>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myRequests.length === 0 ? (
                 <p className="text-muted-foreground col-span-full text-center py-8">
-                  No requests posted yet.
+                  {t("No requests posted yet.")}
                 </p>
               ) : (
                 myRequests.map((job) => (
                   <JobCard
                     key={job.id}
-                    title={job.title}
+                    title={t(job.title)}
                     description={job.description}
                     location={job.location}
                     date={job.date}
@@ -513,38 +584,38 @@ export default function BrokerDashboard() {
                     }}
                     onEdit={() => navigate(`/broker/edit-request/${job.id}`)}
                     onDelete={async () => {
-                      if (window.confirm("Are you sure you want to delete this request?")) {
+                      if (window.confirm(t("Are you sure you want to delete this request?"))) {
                         try {
                           await api.delete(`/services/${job.id}`);
                           setMyRequests(prev => prev.filter(req => req.id !== job.id));
                           toast({
-                            title: "Request Deleted",
-                            description: "The service request has been deleted.",
+                            title: t("Request Deleted"),
+                            description: t("The service request has been deleted."),
                           });
                         } catch (error) {
                           console.error("Error deleting request:", error);
                           toast({
-                            title: "Error",
-                            description: "Failed to delete request.",
+                            title: t("Error"),
+                            description: t("Failed to delete request."),
                             variant: "destructive",
                           });
                         }
                       }
                     }}
                     onComplete={async () => {
-                      if (window.confirm("Mark this job as completed?")) {
+                      if (window.confirm(t("Mark this job as completed?"))) {
                         try {
                           await api.put(`/services/${job.id}`, { status: 'completed' });
                           setMyRequests(prev => prev.map(req => req.id === job.id ? { ...req, status: 'completed' } : req));
                           toast({
-                            title: "Job Completed",
-                            description: "The job has been marked as completed.",
+                            title: t("Job Completed"),
+                            description: t("The job has been marked as completed."),
                           });
                         } catch (error) {
                           console.error("Error completing request:", error);
                           toast({
-                            title: "Error",
-                            description: "Failed to update status.",
+                            title: t("Error"),
+                            description: t("Failed to update status."),
                             variant: "destructive",
                           });
                         }
@@ -560,8 +631,8 @@ export default function BrokerDashboard() {
                         setIsReviewOpen(true);
                       } else {
                         toast({
-                          title: "Info",
-                          description: "No worker assigned to rate.",
+                          title: t("Info"),
+                          description: t("No worker assigned to rate."),
                         });
                       }
                     }}
@@ -578,22 +649,22 @@ export default function BrokerDashboard() {
 
           <TabsContent value="marketplace" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">All Available Jobs (Broker can view all open jobs)</h2>
+              <h2 className="text-lg font-semibold">{t("All Available Jobs")}</h2>
               <Button variant="outline">
                 <Search className="h-4 w-4 mr-2" />
-                Filter
+                {t("Filter")}
               </Button>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {availableJobs.length === 0 ? (
                 <p className="text-muted-foreground col-span-full text-center py-8">
-                  No jobs available at the moment.
+                  {t("No jobs available at the moment.")}
                 </p>
               ) : (
                 availableJobs.map((job) => (
                   <JobCard
                     key={job.id}
-                    title={job.title}
+                    title={t(job.title)}
                     description={job.description}
                     location={job.location}
                     date={job.date}
@@ -616,18 +687,18 @@ export default function BrokerDashboard() {
 
           <TabsContent value="workers-jobs" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">My Workers' Jobs (Work — jobs assigned to your workers)</h2>
+              <h2 className="text-lg font-semibold">{t("My Workers' Jobs (Work)")}</h2>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {managedWorkersJobs.length === 0 ? (
                 <p className="text-muted-foreground col-span-full text-center py-8">
-                  No jobs assigned to your managed workers yet.
+                  {t("No jobs assigned to your managed workers yet.")}
                 </p>
               ) : (
                 managedWorkersJobs.map((job) => (
                   <JobCard
                     key={job.id}
-                    title={job.title}
+                    title={t(job.title)}
                     description={job.description}
                     location={job.location}
                     date={job.date}
@@ -649,22 +720,22 @@ export default function BrokerDashboard() {
           </TabsContent>
           <TabsContent value="all-platform-requests" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">All Platform Requests (Global view of all jobs)</h2>
+              <h2 className="text-lg font-semibold">{t("All Platform Requests")}</h2>
               <Button variant="outline">
                 <Search className="h-4 w-4 mr-2" />
-                Filter
+                {t("Filter")}
               </Button>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {allPlatformRequests.length === 0 ? (
                 <p className="text-muted-foreground col-span-full text-center py-8">
-                  No requests found on the platform.
+                  {t("No requests found on the platform.")}
                 </p>
               ) : (
                 allPlatformRequests.map((job) => (
                   <JobCard
                     key={job.id}
-                    title={job.title}
+                    title={t(job.title)}
                     description={job.description}
                     location={job.location}
                     date={job.date}
@@ -702,13 +773,13 @@ export default function BrokerDashboard() {
               navigate(`/broker/messages?userId=${workerId}&userName=${encodeURIComponent(workerName)}`);
             }}
             onAcceptBid={async (bidId, workerId, workerName) => {
-              if (window.confirm("Are you sure you want to accept this bid? This will assign the job to the worker.")) {
+              if (window.confirm(t("Are you sure you want to accept this bid? This will assign the job to the worker."))) {
                 try {
                   await api.put(`/bids/${bidId}/accept`);
-                  toast({ title: "Bid Accepted", description: "The worker has been assigned. You can message them now." });
+                  toast({ title: t("Bid Accepted"), description: t("The worker has been assigned. You can message them now.") });
                   setIsBidListOpen(false);
                   const { data } = await api.get('/services/my');
-                  const formatted = data.map((req: any) => ({
+                  const formatted = data.map((req: ApiRequest) => ({
                     id: req._id,
                     title: req.serviceType,
                     description: req.description,
@@ -723,8 +794,9 @@ export default function BrokerDashboard() {
                   }));
                   setMyRequests(formatted);
                   navigate(`/broker/messages?userId=${workerId}&userName=${encodeURIComponent(workerName)}`);
-                } catch (error: any) {
-                  toast({ title: "Error", description: error.response?.data?.message || "Failed to accept bid.", variant: "destructive" });
+                } catch (err) {
+                  const error = err as { response?: { data?: { message?: string } } };
+                  toast({ title: t("Error"), description: error.response?.data?.message || "Failed to accept bid.", variant: "destructive" });
                 }
               }
             }}

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { requesterNavItems } from "@/config/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 
 import { useNavigate } from "react-router-dom";
@@ -69,6 +70,7 @@ export default function RequesterDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [myRequests, setMyRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -99,8 +101,8 @@ export default function RequesterDashboard() {
       } catch (error) {
         console.error("Error fetching requests:", error);
         toast({
-          title: "Error",
-          description: "Failed to load your requests.",
+          title: t("Error"),
+          description: t("Failed to load your requests."),
           variant: "destructive",
         });
       } finally {
@@ -142,19 +144,19 @@ export default function RequesterDashboard() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Welcome back, {user?.fullName?.split(' ')[0] || 'User'}!</h1>
+            <h1 className="text-2xl font-bold">{t("Welcome back!")} {user?.fullName?.split(' ')[0] || t("User")}!</h1>
             <p className="text-muted-foreground">
-              Manage your service requests and find workers
+              {t("Manage your service requests and find workers")}
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="w-fit" onClick={() => navigate('/requester/workers')}>
               <Users className="h-4 w-4 mr-2" />
-              Find Workers
+              {t("Find Workers")}
             </Button>
             <Button className="w-fit" onClick={() => navigate('/requester/create-request')}>
               <Plus className="h-4 w-4 mr-2" />
-              Post New Request
+              {t("Post New Request")}
             </Button>
           </div>
         </div>
@@ -162,28 +164,28 @@ export default function RequesterDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Active Requests"
+            title={t("Active Requests")}
             value={myRequests.filter(r => r.status === 'pending' || r.status === 'in_progress').length}
             icon={Clock}
             variant="requester"
             trend={{ value: 12, isPositive: true }}
           />
           <StatCard
-            title="Completed Jobs"
+            title={t("Completed Jobs")}
             value={23}
             icon={CheckCircle}
             variant="requester"
           />
           <StatCard
-            title="Workers Hired"
+            title={t("Workers Hired")}
             value={18}
             icon={Users}
             variant="requester"
           />
           <StatCard
-            title="Your Rating"
+            title={t("Your Rating")}
             value={reviewStats.reviewCount ? `${reviewStats.rating.toFixed(1)}/5` : "—"}
-            subtitle={reviewStats.reviewCount ? `${reviewStats.reviewCount} reviews` : "No reviews yet"}
+            subtitle={reviewStats.reviewCount ? `${reviewStats.reviewCount} reviews` : t("No reviews yet.")}
             icon={Star}
             variant="requester"
           />
@@ -192,15 +194,15 @@ export default function RequesterDashboard() {
         {/* Main Content */}
         <Tabs defaultValue="requests" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="requests">My Requests</TabsTrigger>
-            <TabsTrigger value="reviews">My Reviews</TabsTrigger>
+            <TabsTrigger value="requests">{t("My Requests")}</TabsTrigger>
+            <TabsTrigger value="reviews">{t("My Reviews")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests" className="space-y-4">
             <div className="flex gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search requests..." className="pl-10" />
+                <Input placeholder={t("Search requests...")} className="pl-10" />
               </div>
             </div>
 
@@ -208,7 +210,7 @@ export default function RequesterDashboard() {
               {myRequests.map((job) => (
                 <JobCard
                   key={job.id}
-                  title={job.title}
+                  title={t(job.title)}
                   description={job.description}
                   location={job.location}
                   date={job.date}
@@ -230,28 +232,28 @@ export default function RequesterDashboard() {
 
           <TabsContent value="reviews" className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              Reviews and ratings workers gave you after completing jobs. Average = (sum of all ratings) ÷ number of reviews (e.g. 5/5 and 3/5 → 4/5).
+              {t("Reviews and ratings workers gave you after completing jobs. Average = (sum of all ratings) ÷ number of reviews (e.g. 5/5 and 3/5 → 4/5).")}
             </p>
             {reviewStats.reviewCount > 0 && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
                 <Star className="h-5 w-5 fill-warning text-warning" />
                 <span className="font-semibold">{reviewStats.rating.toFixed(1)}/5</span>
-                <span className="text-muted-foreground">({reviewStats.reviewCount} {reviewStats.reviewCount === 1 ? "review" : "reviews"})</span>
+                <span className="text-muted-foreground">({reviewStats.reviewCount} {reviewStats.reviewCount === 1 ? t("review") : t("reviews")})</span>
               </div>
             )}
             {reviews.length === 0 ? (
-              <p className="text-muted-foreground">No reviews yet. Workers can rate you after completing a job.</p>
+              <p className="text-muted-foreground">{t("No reviews yet. Workers can rate you after completing a job.")}</p>
             ) : (
               <div className="space-y-4">
                 {reviews.map((review: any, index: number) => (
                   <div key={review._id || index} className="border p-3 rounded-lg">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{review.reviewer?.fullName || "Worker"}</span>
+                      <span className="font-medium">{review.reviewer?.fullName || t("Worker")}</span>
                       <span className="text-sm font-medium">{review.rating}/5</span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{review.comment}</p>
                     {review.serviceRequest?.serviceType && (
-                      <p className="text-xs text-muted-foreground mt-1">Job: {review.serviceRequest.serviceType}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t("Worker")}: {t(review.serviceRequest.serviceType)}</p>
                     )}
                   </div>
                 ))}

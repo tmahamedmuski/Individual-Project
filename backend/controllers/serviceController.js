@@ -1,6 +1,8 @@
 const ServiceRequest = require('../models/ServiceRequest');
 const User = require('../models/User');
-const { sendNewJobNotificationEmail } = require('../utils/emailService');
+const Bid = require('../models/Bid');
+const { sendNewJobNotificationEmail, sendJobUpdatedNotificationEmail } = require('../utils/emailService');
+const { sendNewJobSMS, sendJobUpdatedSMS } = require('../utils/smsService');
 
 // @desc    Create new service request
 // @route   POST /api/services
@@ -63,6 +65,11 @@ const createRequest = async (req, res) => {
                     sendNewJobNotificationEmail(worker.email, worker.fullName, request, worker.preferredLanguage || 'en').catch(err => {
                         console.error(`Failed to send job notification to ${worker.email}:`, err.message);
                     });
+                    if (worker.phone) {
+                        sendNewJobSMS(worker.phone, worker.fullName, request, worker.preferredLanguage || 'en').catch(err => {
+                            console.error(`Failed to send job SMS notification to ${worker.phone}:`, err.message);
+                        });
+                    }
                 }
             } catch (err) {
                 console.error('[ServiceController] Error notifying matching workers:', err);
@@ -187,6 +194,60 @@ const updateRequest = async (req, res) => {
             req.body,
             { new: true }
         );
+
+        // Notify workers of the update in the background
+        setTimeout(async () => {
+            try {
+                // Determine who to notify:
+                // 1. If the request has an assigned worker, notify that worker.
+                // 2. Otherwise, notify all workers who have placed bids on this request.
+                if (updatedRequest.worker) {
+                    const assignedWorker = await User.findById(updatedRequest.worker);
+                    if (assignedWorker) {
+                        sendJobUpdatedNotificationEmail(
+                            assignedWorker.email,
+                            assignedWorker.fullName,
+                            updatedRequest,
+                            assignedWorker.preferredLanguage || 'en'
+                        ).catch(err => console.error(`Failed to send update email to worker:`, err.message));
+
+                        if (assignedWorker.phone) {
+                            sendJobUpdatedSMS(
+                                assignedWorker.phone,
+                                assignedWorker.fullName,
+                                updatedRequest,
+                                assignedWorker.preferredLanguage || 'en'
+                            ).catch(err => console.error(`Failed to send update SMS to worker:`, err.message));
+                        }
+                    }
+                } else {
+                    const bids = await Bid.find({ serviceRequest: updatedRequest._id }).populate('worker');
+                    const notifiedWorkers = new Set();
+                    for (const bid of bids) {
+                        if (bid.worker && !notifiedWorkers.has(bid.worker._id.toString())) {
+                            notifiedWorkers.add(bid.worker._id.toString());
+                            sendJobUpdatedNotificationEmail(
+                                bid.worker.email,
+                                bid.worker.fullName,
+                                updatedRequest,
+                                bid.worker.preferredLanguage || 'en'
+                            ).catch(err => console.error(`Failed to send update email to bidder:`, err.message));
+
+                            if (bid.worker.phone) {
+                                sendJobUpdatedSMS(
+                                    bid.worker.phone,
+                                    bid.worker.fullName,
+                                    updatedRequest,
+                                    bid.worker.preferredLanguage || 'en'
+                                ).catch(err => console.error(`Failed to send update SMS to bidder:`, err.message));
+                            }
+                        }
+                    }
+                }
+            } catch (notifyError) {
+                console.error('Error sending updates notification:', notifyError);
+            }
+        }, 0);
 
         res.status(200).json(updatedRequest);
     } catch (error) {
